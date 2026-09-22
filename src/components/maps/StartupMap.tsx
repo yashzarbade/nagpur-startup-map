@@ -1,0 +1,609 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import {
+  MapPin,
+  Building2,
+  Briefcase,
+  ExternalLink,
+  CheckCircle2,
+  X,
+  AlertTriangle,
+  Layers,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
+import { COMPANIES_DATA, JOBS_DATA, CompanyData } from "@/lib/data";
+
+// Color mapping for sector markers
+const SECTOR_COLORS: Record<string, string> = {
+  "AI": "#8b5cf6",               // Purple
+  "SaaS": "#3b82f6",             // Blue
+  "Fintech": "#06b6d4",          // Cyan
+  "Healthtech": "#ec4899",       // Pink
+  "Edtech": "#f59e0b",           // Amber
+  "Agritech": "#84cc16",         // Lime
+  "Deeptech": "#6366f1",         // Indigo
+  "Cybersecurity": "#ef4444",    // Red
+  "Ecommerce": "#14b8a6",        // Teal
+  "D2C": "#f43f5e",              // Rose
+  "IT Services": "#f97316",       // Warm Orange
+  "Software": "#10b981",         // Emerald Green
+  "Media & Marketing": "#d946ef",// Fuchsia
+};
+
+const DEFAULT_SECTOR_COLOR = "#f97316";
+
+const NAGPUR_AREAS = [
+  { name: "All Nagpur", lng: 79.0882, lat: 21.1458, zoom: 11 },
+  { name: "MIHAN SEZ", lng: 79.0585, lat: 21.0920, zoom: 13.5 },
+  { name: "IT Park", lng: 79.0495, lat: 21.1270, zoom: 14 },
+  { name: "Dharampeth", lng: 79.0770, lat: 21.1440, zoom: 14 },
+  { name: "Civil Lines", lng: 79.0805, lat: 21.1530, zoom: 14 },
+  { name: "Ramdaspeth", lng: 79.0730, lat: 21.1360, zoom: 14 },
+  { name: "Sadar", lng: 79.0845, lat: 21.1500, zoom: 14 },
+  { name: "Hingna", lng: 79.0250, lat: 21.1150, zoom: 13.5 },
+  { name: "Besa", lng: 79.0800, lat: 21.0860, zoom: 14 },
+  { name: "Central Avenue", lng: 79.1150, lat: 21.1510, zoom: 14 },
+];
+
+const SECTOR_OPTIONS = [
+  "All",
+  "AI",
+  "SaaS",
+  "Fintech",
+  "Healthtech",
+  "Edtech",
+  "Agritech",
+  "Deeptech",
+  "Cybersecurity",
+  "Ecommerce",
+  "D2C",
+  "IT Services",
+  "Software",
+];
+
+export default function StartupMap() {
+  const router = useRouter();
+  const mapContainerRef = React.useRef<HTMLDivElement>(null);
+  const mapInstanceRef = React.useRef<mapboxgl.Map | null>(null);
+  const popupRef = React.useRef<mapboxgl.Popup | null>(null);
+
+  const [selectedSector, setSelectedSector] = React.useState<string>("All");
+  const [selectedArea, setSelectedArea] = React.useState<string>("All Nagpur");
+  const [activeCompany, setActiveCompany] = React.useState<CompanyData | null>(null);
+  const [mapLoaded, setMapLoaded] = React.useState(false);
+  const [mapError, setMapError] = React.useState<string | null>(null);
+
+  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+  // Filter companies based on sector selection
+  const filteredCompanies = React.useMemo(() => {
+    return COMPANIES_DATA.filter((c) => {
+      if (selectedSector === "All") return true;
+      return c.sector === selectedSector || c.tags.includes(selectedSector);
+    });
+  }, [selectedSector]);
+
+  // Convert companies to GeoJSON feature collection
+  const geojsonData = React.useMemo(() => {
+    return {
+      type: "FeatureCollection" as const,
+      features: filteredCompanies.map((c) => {
+        const lng = parseFloat(c.longitude);
+        const lat = parseFloat(c.latitude);
+        const jobsCount = JOBS_DATA.filter((j) => j.companySlug === c.slug).length;
+        return {
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [lng, lat],
+          },
+          properties: {
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            sector: c.sector,
+            companyType: c.companyType || "Startup",
+            locationName: c.locationName,
+            hiring: c.hiring,
+            jobsCount,
+            descriptionShort: c.descriptionShort,
+            logoUrl: c.logoUrl || "",
+            teamSize: c.teamSize,
+            color: SECTOR_COLORS[c.sector] || DEFAULT_SECTOR_COLOR,
+          },
+        };
+      }),
+    };
+  }, [filteredCompanies]);
+
+  // Initialize Mapbox map
+  React.useEffect(() => {
+    if (!token) {
+      setMapError("Mapbox access token is missing. Please add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to .env.local.");
+      return;
+    }
+
+    if (!mapboxgl.supported()) {
+      setMapError("WebGL is not supported in your browser or graphics hardware.");
+      return;
+    }
+
+    if (mapInstanceRef.current || !mapContainerRef.current) return;
+
+    try {
+      mapboxgl.accessToken = token;
+
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [79.0882, 21.1458], // Nagpur Center [lng, lat]
+        zoom: 11,
+        minZoom: 8,
+        maxZoom: 18,
+        attributionControl: true, // Keep Mapbox attribution visible per terms
+      });
+
+      // Add navigation controls (zoom, compass)
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: true, showZoom: true }), "top-right");
+
+      // Add fullscreen control on desktop devices
+      if (typeof window !== "undefined" && window.innerWidth >= 768) {
+        map.addControl(new mapboxgl.FullscreenControl(), "top-right");
+      }
+
+      map.on("load", () => {
+        mapInstanceRef.current = map;
+
+        // Add clustered GeoJSON source
+        map.addSource("companies-source", {
+          type: "geojson",
+          data: geojsonData,
+          cluster: true,
+          clusterMaxZoom: 14,
+          clusterRadius: 45,
+        });
+
+        // 1. Cluster circles
+        map.addLayer({
+          id: "clusters",
+          type: "circle",
+          source: "companies-source",
+          filter: ["has", "point_count"],
+          paint: {
+            "circle-color": [
+              "step",
+              ["get", "point_count"],
+              "#ea580c", // Warm Orange for < 5
+              5,
+              "#c2410c", // Deep Orange for 5 - 10
+              10,
+              "#9a3412", // Darker Orange for 10+
+            ],
+            "circle-radius": [
+              "step",
+              ["get", "point_count"],
+              18,
+              5,
+              24,
+              10,
+              30,
+            ],
+            "circle-stroke-width": 2.5,
+            "circle-stroke-color": "#ffffff",
+          },
+        });
+
+        // 2. Cluster text labels (count)
+        map.addLayer({
+          id: "cluster-count",
+          type: "symbol",
+          source: "companies-source",
+          filter: ["has", "point_count"],
+          layout: {
+            "text-field": "{point_count_abbreviated}",
+            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+            "text-size": 12,
+          },
+          paint: {
+            "text-color": "#ffffff",
+          },
+        });
+
+        // 3. Unclustered points outer glow / ring
+        map.addLayer({
+          id: "unclustered-glow",
+          type: "circle",
+          source: "companies-source",
+          filter: ["!", ["has", "point_count"]],
+          paint: {
+            "circle-color": ["get", "color"],
+            "circle-radius": 14,
+            "circle-opacity": 0.25,
+          },
+        });
+
+        // 4. Unclustered points primary pin
+        map.addLayer({
+          id: "unclustered-point",
+          type: "circle",
+          source: "companies-source",
+          filter: ["!", ["has", "point_count"]],
+          paint: {
+            "circle-color": ["get", "color"],
+            "circle-radius": 8,
+            "circle-stroke-width": 2.5,
+            "circle-stroke-color": "#ffffff",
+          },
+        });
+
+        // Mouse cursor updates
+        map.on("mouseenter", "clusters", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "clusters", () => {
+          map.getCanvas().style.cursor = "";
+        });
+        map.on("mouseenter", "unclustered-point", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "unclustered-point", () => {
+          map.getCanvas().style.cursor = "";
+        });
+
+        // Cluster click to zoom in
+        map.on("click", "clusters", (e) => {
+          const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+          if (!features.length) return;
+          const clusterId = features[0].properties?.cluster_id;
+          const source = map.getSource("companies-source") as mapboxgl.GeoJSONSource;
+
+          source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err || zoom === null || zoom === undefined) return;
+            const coords = (features[0].geometry as any).coordinates;
+            map.easeTo({
+              center: coords,
+              zoom: Math.min(zoom, 16),
+              duration: 800,
+            });
+          });
+        });
+
+        // Unclustered point click: Open popup & select company
+        map.on("click", "unclustered-point", (e) => {
+          if (!e.features?.length) return;
+          const feature = e.features[0];
+          const props = feature.properties as any;
+          const coords = (feature.geometry as any).coordinates.slice();
+
+          // Ensure coordinates wrap properly over anti-meridian
+          while (Math.abs(e.lngLat.lng - coords[0]) > 180) {
+            coords[0] += e.lngLat.lng > coords[0] ? 360 : -360;
+          }
+
+          // Find company in data
+          const fullCompany = COMPANIES_DATA.find((c) => c.slug === props.slug);
+          if (fullCompany) {
+            setActiveCompany(fullCompany);
+          }
+
+          // Clean up old popup
+          if (popupRef.current) {
+            popupRef.current.remove();
+          }
+
+          // Build custom HTML popup
+          const popupContent = document.createElement("div");
+          popupContent.className = "p-3 font-sans max-w-[280px]";
+
+          const logoHtml = props.logoUrl
+            ? `<img src="${props.logoUrl}" alt="${props.name}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; padding: 2px; background: #ffffff; flex-shrink: 0;" />`
+            : `<div style="width: 32px; height: 32px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #475569; flex-shrink: 0;">${props.name.slice(0, 2).toUpperCase()}</div>`;
+
+          const hiringBadge = props.hiring === true || props.hiring === "true"
+            ? `<span style="background-color: #dcfce7; color: #15803d; padding: 2px 7px; border-radius: 9999px; font-size: 10px; font-weight: 600;">Hiring</span>`
+            : "";
+
+          const typeBadge = props.companyType
+            ? `<span style="background-color: #f1f5f9; color: #475569; padding: 2px 7px; border-radius: 9999px; font-size: 9px; font-weight: 600;">${props.companyType}</span>`
+            : "";
+
+          const jobsBadge = props.jobsCount && Number(props.jobsCount) > 0
+            ? `<span style="background-color: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 9999px; font-size: 10px; font-weight: 500;">${props.jobsCount} jobs</span>`
+            : "";
+
+          popupContent.innerHTML = `
+            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+              ${logoHtml}
+              <div style="min-width: 0; flex: 1;">
+                <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3;">${props.name}</h4>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                  <span style="font-weight: 600; color: ${props.color};">${props.sector}</span> • ${props.locationName}
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 6px;">
+              ${typeBadge}
+              ${hiringBadge}
+            </div>
+            <p style="font-size: 11px; color: #334155; line-height: 1.4; margin: 0 0 10px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+              ${props.descriptionShort || ""}
+            </p>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+              ${jobsBadge}
+              <button id="view-company-btn-${props.slug}" style="background-color: #f97316; color: #ffffff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; margin-left: auto;">
+                View Company →
+              </button>
+            </div>
+          `;
+
+          // Add click listener that utilizes Next.js router.push without page reload
+          const btn = popupContent.querySelector(`#view-company-btn-${props.slug}`);
+          if (btn) {
+            btn.addEventListener("click", () => {
+              router.push(`/company/${props.slug}`);
+            });
+          }
+
+          const popup = new mapboxgl.Popup({
+            offset: 14,
+            closeButton: true,
+            closeOnClick: false,
+            className: "startup-mapbox-popup",
+          })
+            .setLngLat(coords)
+            .setDOMContent(popupContent)
+            .addTo(map);
+
+          popupRef.current = popup;
+
+          // Pan smoothly to center clicked marker
+          map.easeTo({
+            center: coords,
+            duration: 500,
+          });
+        });
+
+        setMapLoaded(true);
+      });
+
+      map.on("error", (e) => {
+        // If map fails with style/token error
+        if (e?.error?.message?.includes("Forbidden") || e?.error?.message?.includes("Unauthorized")) {
+          setMapError("Mapbox access token is invalid or unauthorized.");
+        }
+      });
+    } catch (err: any) {
+      console.error("Mapbox initialization error:", err);
+      setMapError("Failed to initialize Mapbox GL JS.");
+    }
+
+    return () => {
+      if (popupRef.current) {
+        popupRef.current.remove();
+        popupRef.current = null;
+      }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [token, router, geojsonData]);
+
+  // Update GeoJSON source when filter changes without re-initializing map
+  React.useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapLoaded) return;
+
+    const source = map.getSource("companies-source") as mapboxgl.GeoJSONSource | undefined;
+    if (source && typeof source.setData === "function") {
+      source.setData(geojsonData);
+    }
+  }, [geojsonData, mapLoaded]);
+
+  // Area jump fly-to
+  const handleAreaClick = (area: typeof NAGPUR_AREAS[0]) => {
+    setSelectedArea(area.name);
+    const map = mapInstanceRef.current;
+    if (map) {
+      map.flyTo({
+        center: [area.lng, area.lat],
+        zoom: area.zoom,
+        duration: 1200,
+        essential: true,
+      });
+    }
+  };
+
+  // Fallback UI if map cannot load
+  if (mapError) {
+    return (
+      <div className="relative w-full rounded-2xl overflow-hidden border shadow-sm bg-card p-8 flex flex-col items-center justify-center text-center min-h-[500px] sm:min-h-[600px]">
+        <div className="w-14 h-14 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
+          <AlertTriangle className="h-7 w-7" />
+        </div>
+        <h3 className="text-xl font-bold text-foreground">Map couldn&apos;t load. View startups in list.</h3>
+        <p className="text-sm text-muted-foreground max-w-md mt-1 mb-6">
+          {mapError} You can still browse and discover all {COMPANIES_DATA.length} verified companies directly in the directory.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/startups"
+            className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            Explore All Startups
+          </Link>
+          <Link
+            href="/hiring"
+            className="px-5 py-2.5 rounded-xl border text-xs font-semibold hover:bg-muted transition-colors"
+          >
+            Companies Hiring Now
+          </Link>
+        </div>
+
+        {/* Quick fallback startup cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mt-8 text-left">
+          {COMPANIES_DATA.slice(0, 3).map((c) => (
+            <Link
+              key={c.slug}
+              href={`/company/${c.slug}`}
+              className="p-3.5 rounded-xl border bg-background hover:border-primary/50 transition-colors shadow-xs group"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{c.sector}</span>
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-1">{c.locationName}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full rounded-2xl overflow-hidden border shadow-lg bg-card min-h-[520px] sm:min-h-[620px]">
+      {/* Top Filter and Controls Overlay */}
+      <div className="absolute top-3.5 left-3.5 right-14 z-10 flex flex-wrap items-center gap-2 pointer-events-none">
+        {/* Sector Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-background/90 backdrop-blur-md rounded-xl border shadow-sm pointer-events-auto">
+          {SECTOR_OPTIONS.map((sector) => (
+            <button
+              key={sector}
+              onClick={() => setSelectedSector(sector)}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                selectedSector === sector
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              {sector}
+            </button>
+          ))}
+        </div>
+
+        {/* Quick Area Jump */}
+        <div className="hidden lg:flex items-center gap-1 p-1.5 bg-background/90 backdrop-blur-md rounded-xl border shadow-sm pointer-events-auto">
+          <MapPin className="h-3.5 w-3.5 text-primary ml-1.5 mr-0.5" />
+          {NAGPUR_AREAS.map((area) => (
+            <button
+              key={area.name}
+              onClick={() => handleAreaClick(area)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                selectedArea === area.name
+                  ? "bg-accent text-accent-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {area.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Mapbox Canvas Container (with explicit height and responsive fill) */}
+      <div
+        ref={mapContainerRef}
+        className="w-full h-[520px] sm:h-[620px] bg-muted/20"
+        style={{ minHeight: "520px" }}
+      />
+
+      {/* Bottom Floating Card for Selected Company */}
+      {activeCompany && (
+        <div className="absolute bottom-4 left-4 right-4 sm:left-6 sm:max-w-md z-20 bg-background/95 backdrop-blur-md border rounded-2xl p-4 shadow-xl animate-in slide-in-from-bottom-3 duration-200">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-card border overflow-hidden flex items-center justify-center shrink-0 p-1">
+                {activeCompany.logoUrl ? (
+                  <img
+                    src={activeCompany.logoUrl}
+                    alt={activeCompany.name}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="font-bold text-sm text-primary">
+                    {activeCompany.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="font-bold text-base text-foreground">{activeCompany.name}</h4>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                  {activeCompany.companyType && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border">
+                      {activeCompany.companyType}
+                    </span>
+                  )}
+                  <span className="font-medium text-foreground">{activeCompany.sector}</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-0.5">
+                    <MapPin className="h-3 w-3" /> {activeCompany.locationName}, Nagpur
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setActiveCompany(null);
+                if (popupRef.current) popupRef.current.remove();
+              }}
+              className="text-muted-foreground hover:text-foreground text-xs p-1 rounded-md"
+              aria-label="Close details"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-2.5 line-clamp-2 leading-relaxed">
+            {activeCompany.descriptionShort}
+          </p>
+
+          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+            <div className="flex items-center gap-2">
+              {activeCompany.hiring && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                  <Briefcase className="h-3 w-3" /> Hiring Now
+                </span>
+              )}
+              <span className="text-[11px] text-muted-foreground">Team: {activeCompany.teamSize}</span>
+            </div>
+            <Link
+              href={`/company/${activeCompany.slug}`}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+            >
+              View Company <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Map Legend Overlay */}
+      <div className="absolute bottom-4 right-4 hidden md:flex items-center gap-3 px-3 py-1.5 bg-background/90 backdrop-blur-md rounded-xl border shadow-sm text-[11px] text-muted-foreground pointer-events-none">
+        <span className="font-semibold text-foreground">Sectors:</span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-purple-500" /> AI
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-blue-500" /> SaaS
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-orange-500" /> IT Services
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" /> Software
+        </span>
+      </div>
+    </div>
+  );
+}
