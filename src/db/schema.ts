@@ -97,6 +97,27 @@ export const claimStatusEnum = pgEnum("claim_status", [
   "REJECTED",
 ]);
 
+export const jobSourceTypeEnum = pgEnum("job_source_type", [
+  "GREENHOUSE",
+  "ASHBY",
+  "GENERIC_CAREERS_PAGE",
+  "MANUAL",
+  "LINKEDIN",
+  "NAUKRI",
+  "INDEED",
+  "TELEGRAM",
+  "WORKABLE",
+  "LEVER",
+  "WALKIN_SUBMISSION",
+]);
+
+export const syncStatusEnum = pgEnum("sync_status", [
+  "SUCCESS",
+  "FAILED",
+  "PARTIAL",
+  "RUNNING",
+]);
+
 export const paymentStatusEnum = pgEnum("payment_status", [
   "PENDING",
   "COMPLETED",
@@ -108,6 +129,17 @@ export const promotionEntityTypeEnum = pgEnum("promotion_entity_type", [
   "COMPANY",
   "JOB",
   "EVENT",
+]);
+
+export const userRoleEnum = pgEnum("user_role", [
+  "USER",
+  "COMPANY",
+  "ADMIN",
+]);
+
+export const userStatusEnum = pgEnum("user_status", [
+  "ACTIVE",
+  "DISABLED",
 ]);
 
 export const adminRoleEnum = pgEnum("admin_role", [
@@ -137,10 +169,14 @@ export const cities = pgTable(
     latitude: decimal("latitude", { precision: 10, scale: 7 }),
     longitude: decimal("longitude", { precision: 10, scale: 7 }),
     active: boolean("active").notNull().default(true),
+    isPublished: boolean("is_published").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [uniqueIndex("cities_slug_idx").on(table.slug)]
+  (table) => [
+    uniqueIndex("cities_slug_idx").on(table.slug),
+    index("cities_published_idx").on(table.isPublished),
+  ]
 );
 
 // ─── Companies ──────────────────────────────────────────────────────────────
@@ -168,6 +204,10 @@ export const companies = pgTable(
     cityId: integer("city_id").references(() => cities.id),
     hiring: boolean("hiring").notNull().default(false),
     careersUrl: text("careers_url"),
+    jobSourceType: jobSourceTypeEnum("job_source_type"),
+    jobSourceIdentifier: varchar("job_source_identifier", { length: 255 }),
+    lastJobSyncAt: timestamp("last_job_sync_at"),
+    lastJobSyncStatus: syncStatusEnum("last_job_sync_status"),
     fundingAmount: varchar("funding_amount", { length: 100 }),
     fundingStage: varchar("funding_stage", { length: 100 }),
     investors: text("investors"),
@@ -175,6 +215,7 @@ export const companies = pgTable(
       .notNull()
       .default("PENDING"),
     claimed: boolean("claimed").notNull().default(false),
+    claimedByUserId: text("claimed_by_user_id"),
     featured: boolean("featured").notNull().default(false),
     xUrl: text("x_url"),
     instagramUrl: text("instagram_url"),
@@ -230,12 +271,14 @@ export const founders = pgTable(
     websiteUrl: text("website_url"),
     xUrl: text("x_url"),
     location: varchar("location", { length: 200 }),
+    cityId: integer("city_id").references(() => cities.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("founders_slug_idx").on(table.slug),
     index("founders_company_idx").on(table.companyId),
+    index("founders_city_idx").on(table.cityId),
   ]
 );
 
@@ -262,12 +305,31 @@ export const jobs = pgTable(
     skills: text("skills"), // comma-separated for simplicity in V1
     applicationUrl: text("application_url"),
     sourceUrl: text("source_url"),
+    sourceType: jobSourceTypeEnum("source_type"),
+    externalJobId: varchar("external_job_id", { length: 255 }),
+    lastSeenAt: timestamp("last_seen_at"),
+    lastCheckedAt: timestamp("last_checked_at"),
+    missedSyncCount: integer("missed_sync_count").notNull().default(0),
     department: varchar("department", { length: 100 }),
     postedAt: timestamp("posted_at").notNull().defaultNow(),
     expiresAt: timestamp("expires_at"),
     status: jobStatusEnum("status").notNull().default("ACTIVE"),
     featured: boolean("featured").notNull().default(false),
     cityId: integer("city_id").references(() => cities.id),
+    walkinDate: timestamp("walkin_date"),
+    walkinStartTime: varchar("walkin_start_time", { length: 50 }),
+    walkinEndTime: varchar("walkin_end_time", { length: 50 }),
+    walkinVenue: text("walkin_venue"),
+    isWalkin: boolean("is_walkin").notNull().default(false),
+    sourceChannel: varchar("source_channel", { length: 255 }),
+    sourceMessageId: varchar("source_message_id", { length: 100 }),
+    sourceJobId: varchar("source_job_id", { length: 255 }),
+    verificationStatus: varchar("verification_status", { length: 50 }).notNull().default("PENDING"),
+    moderationStatus: varchar("moderation_status", { length: 50 }).notNull().default("APPROVED"),
+    firstSeenAt: timestamp("first_seen_at").defaultNow(),
+    deduplicationKey: varchar("deduplication_key", { length: 255 }),
+    contactDetails: text("contact_details"),
+    rawData: jsonb("raw_data"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -281,6 +343,38 @@ export const jobs = pgTable(
     index("jobs_title_idx").on(table.title),
     index("jobs_featured_idx").on(table.featured),
     index("jobs_city_idx").on(table.cityId),
+    index("jobs_source_type_idx").on(table.sourceType),
+    index("jobs_external_id_idx").on(table.sourceType, table.externalJobId),
+    index("jobs_is_walkin_idx").on(table.isWalkin),
+    index("jobs_walkin_date_idx").on(table.walkinDate),
+    index("jobs_city_walkin_idx").on(table.cityId, table.isWalkin),
+    index("jobs_dedup_key_idx").on(table.deduplicationKey),
+    index("jobs_source_job_id_idx").on(table.sourceType, table.sourceJobId),
+    index("jobs_moderation_idx").on(table.moderationStatus),
+  ]
+);
+
+// ─── Job Sync Runs ──────────────────────────────────────────────────────────
+
+export const jobSyncRuns = pgTable(
+  "job_sync_runs",
+  {
+    id: serial("id").primaryKey(),
+    startedAt: timestamp("started_at").notNull().defaultNow(),
+    completedAt: timestamp("completed_at"),
+    status: syncStatusEnum("status").notNull().default("RUNNING"),
+    triggeredBy: varchar("triggered_by", { length: 50 }).notNull().default("CRON"),
+    companiesChecked: integer("companies_checked").notNull().default(0),
+    jobsFound: integer("jobs_found").notNull().default(0),
+    jobsCreated: integer("jobs_created").notNull().default(0),
+    jobsUpdated: integer("jobs_updated").notNull().default(0),
+    jobsExpired: integer("jobs_expired").notNull().default(0),
+    errors: integer("errors").notNull().default(0),
+    errorLog: jsonb("error_log"),
+  },
+  (table) => [
+    index("sync_runs_started_idx").on(table.startedAt),
+    index("sync_runs_status_idx").on(table.status),
   ]
 );
 
@@ -346,25 +440,64 @@ export const talentProfiles = pgTable(
   ]
 );
 
+// ─── User Profiles ─────────────────────────────────────────────────────────
+
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    email: varchar("email", { length: 255 }),
+    fullName: varchar("full_name", { length: 255 }),
+    username: varchar("username", { length: 100 }),
+    avatar: text("avatar"),
+    bio: text("bio"),
+    location: varchar("location", { length: 200 }),
+    city: varchar("city", { length: 100 }),
+    skills: text("skills"),
+    linkedinUrl: text("linkedin_url"),
+    githubUrl: text("github_url"),
+    portfolioUrl: text("portfolio_url"),
+    role: userRoleEnum("role").notNull().default("USER"),
+    status: userStatusEnum("status").notNull().default("ACTIVE"),
+    claimedCompanyId: integer("claimed_company_id").references(() => companies.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_profiles_user_id_idx").on(table.userId),
+    uniqueIndex("user_profiles_username_idx").on(table.username),
+  ]
+);
+
 // ─── Submissions ────────────────────────────────────────────────────────────
 
 export const submissions = pgTable(
   "submissions",
   {
     id: serial("id").primaryKey(),
+    userId: text("user_id"),
     type: submissionTypeEnum("type").notNull(),
     data: jsonb("data").notNull(),
     status: submissionStatusEnum("status").notNull().default("PENDING"),
     submitterEmail: varchar("submitter_email", { length: 255 }),
     source: varchar("source", { length: 100 }),
     adminNotes: text("admin_notes"),
+    rejectionReason: text("rejection_reason"),
+    reviewedAt: timestamp("reviewed_at"),
+    reviewedBy: text("reviewed_by"),
+    cityId: integer("city_id").references(() => cities.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     index("submissions_status_idx").on(table.status),
     index("submissions_type_idx").on(table.type),
+    index("submissions_user_id_idx").on(table.userId),
     index("submissions_created_idx").on(table.createdAt),
+    index("submissions_city_idx").on(table.cityId),
   ]
 );
 
@@ -377,6 +510,7 @@ export const claims = pgTable(
     companyId: integer("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
+    userId: text("user_id"),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 255 }).notNull(),
     role: varchar("role", { length: 200 }),
@@ -384,12 +518,71 @@ export const claims = pgTable(
     evidence: text("evidence"),
     status: claimStatusEnum("status").notNull().default("PENDING"),
     adminNotes: text("admin_notes"),
+    rejectionReason: text("rejection_reason"),
+    reviewedAt: timestamp("reviewed_at"),
+    reviewedBy: text("reviewed_by"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     index("claims_company_idx").on(table.companyId),
     index("claims_status_idx").on(table.status),
+  ]
+);
+
+// ─── Saved Jobs ─────────────────────────────────────────────────────────────
+
+export const savedJobs = pgTable(
+  "saved_jobs",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    jobId: integer("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("saved_jobs_user_id_idx").on(table.userId),
+    uniqueIndex("saved_jobs_user_job_idx").on(table.userId, table.jobId),
+  ]
+);
+
+// ─── Saved Companies ────────────────────────────────────────────────────────
+
+export const savedCompanies = pgTable(
+  "saved_companies",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    companyId: integer("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("saved_companies_user_id_idx").on(table.userId),
+    uniqueIndex("saved_companies_user_company_idx").on(table.userId, table.companyId),
+  ]
+);
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    message: text("message").notNull(),
+    type: varchar("type", { length: 50 }).notNull().default("INFO"),
+    isRead: boolean("is_read").notNull().default(false),
+    link: text("link"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("notifications_user_idx").on(table.userId),
+    index("notifications_user_read_idx").on(table.userId, table.isRead),
   ]
 );
 
@@ -449,5 +642,32 @@ export const adminActions = pgTable(
   (table) => [
     index("admin_actions_admin_idx").on(table.adminId),
     index("admin_actions_created_idx").on(table.createdAt),
+  ]
+);
+
+// ─── Job Source Health ──────────────────────────────────────────────────────
+
+export const jobSourceHealth = pgTable(
+  "job_source_health",
+  {
+    id: serial("id").primaryKey(),
+    sourceType: varchar("source_type", { length: 50 }).notNull(),
+    sourceName: varchar("source_name", { length: 100 }).notNull(),
+    citySlug: varchar("city_slug", { length: 50 }),
+    status: varchar("status", { length: 50 }).notNull().default("IDLE"),
+    lastSyncAt: timestamp("last_sync_at"),
+    lastSuccessAt: timestamp("last_success_at"),
+    jobsDiscovered: integer("jobs_discovered").notNull().default(0),
+    jobsInserted: integer("jobs_inserted").notNull().default(0),
+    jobsUpdated: integer("jobs_updated").notNull().default(0),
+    jobsExpired: integer("jobs_expired").notNull().default(0),
+    errorSummary: text("error_summary"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("job_source_health_type_idx").on(table.sourceType),
+    index("job_source_health_city_idx").on(table.citySlug),
   ]
 );

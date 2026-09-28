@@ -1,6 +1,8 @@
-import "dotenv/config";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config({ path: ".env" });
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import {
   cities,
   companies,
@@ -1930,8 +1932,12 @@ async function seed() {
     process.exit(1);
   }
 
-  const sql = neon(process.env.DATABASE_URL);
-  const db = drizzle({ client: sql });
+  const client = postgres(process.env.DATABASE_URL, {
+    ssl: "require",
+    max: 5,
+    prepare: false,
+  });
+  const db = drizzle(client);
 
   console.log("🌱 Seeding database...");
 
@@ -2029,6 +2035,8 @@ async function seed() {
   }
 
   console.log("🚀 Seeding completed successfully!");
+  await client.end();
+  process.exit(0);
 }
 
 seed().catch((err) => {

@@ -1,65 +1,26 @@
 import type { MetadataRoute } from "next";
 import { SITE, SECTORS } from "@/lib/constants";
+import { getAllPublishedCities, getCityAreas } from "@/lib/cities";
 import {
   getAllCompanies,
-  getAllJobs,
   getAllEvents,
   getAllFounders,
   getAllTalent,
 } from "@/lib/data";
+import { getAllCompanySlugs } from "@/lib/queries/companies";
+import { getActiveJobSlugs } from "@/lib/queries/jobs";
+import { getWalkins } from "@/lib/queries/walkins";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE.url;
 
-  // Static pages
+  // Root platform pages
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 1,
-    },
-    {
-      url: `${baseUrl}/startups`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/jobs`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/events`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/founders`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/hiring`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/talent`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/startups/all`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.7,
     },
     {
       url: `${baseUrl}/submit`,
@@ -85,38 +46,170 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.3,
     },
+    {
+      url: `${baseUrl}/walkins`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/walkins/nagpur`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/walkins/indore`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/walkins/bhopal`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/submit/walkin`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
   ];
 
-  // Sector pages
-  const sectorPages: MetadataRoute.Sitemap = SECTORS.filter(
-    (s) => s.slug !== "other"
-  ).map((sector) => ({
-    url: `${baseUrl}/startups/${sector.slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
+  // Dynamic pages for all published cities ONLY (strictly excluding unpublished cities)
+  const publishedCities = await getAllPublishedCities();
+  const cityPages: MetadataRoute.Sitemap = [];
 
-  // Entity pages
-  const companyPages: MetadataRoute.Sitemap = getAllCompanies().map((c) => ({
-    url: `${baseUrl}/company/${c.slug}`,
-    lastModified: new Date(c.lastVerifiedAt || Date.now()),
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
+  for (const city of publishedCities) {
+    // City Hub
+    cityPages.push({
+      url: `${baseUrl}/${city.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.95,
+    });
 
-  const jobPages: MetadataRoute.Sitemap = getAllJobs().map((j) => ({
-    url: `${baseUrl}/job/${j.slug}`,
-    lastModified: new Date(j.postedAt),
+    // City Subsections
+    cityPages.push(
+      {
+        url: `${baseUrl}/${city.slug}/startups`,
+        lastModified: new Date(),
+        changeFrequency: "daily",
+        priority: 0.9,
+      },
+      {
+        url: `${baseUrl}/${city.slug}/jobs`,
+        lastModified: new Date(),
+        changeFrequency: "daily",
+        priority: 0.9,
+      },
+      {
+        url: `${baseUrl}/${city.slug}/events`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.8,
+      },
+      {
+        url: `${baseUrl}/${city.slug}/founders`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.7,
+      },
+      {
+        url: `${baseUrl}/${city.slug}/hiring`,
+        lastModified: new Date(),
+        changeFrequency: "daily",
+        priority: 0.8,
+      }
+    );
+
+    // City Sector Pages
+    SECTORS.filter((s) => s.slug !== "other").forEach((sector) => {
+      cityPages.push({
+        url: `${baseUrl}/${city.slug}/startups/${sector.slug}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.75,
+      });
+    });
+
+    // City Area Pages
+    const areas = getCityAreas(city.slug);
+    areas.forEach((area) => {
+      cityPages.push({
+        url: `${baseUrl}/${city.slug}/areas/${area.slug}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    });
+
+    // City Role Pages
+    const commonRoles = [
+      "software-engineer",
+      "frontend-engineer",
+      "backend-engineer",
+      "full-stack-engineer",
+      "ai-ml-engineer",
+      "product-manager",
+      "sales-bd",
+      "internship",
+    ];
+    commonRoles.forEach((role) => {
+      cityPages.push({
+        url: `${baseUrl}/${city.slug}/jobs/${role}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.75,
+      });
+    });
+  }
+
+  // Entity pages (database-backed dynamic company slugs across Nagpur, Indore, Bhopal)
+  const allCompanySlugs = await getAllCompanySlugs();
+  const companyPages: MetadataRoute.Sitemap = allCompanySlugs.map((c) => {
+    const citySlug = c.cityId === 3 ? "indore" : c.cityId === 6 ? "bhopal" : "nagpur";
+    return {
+      url: `${baseUrl}/${citySlug}/company/${c.slug}`,
+      lastModified: c.updatedAt ? new Date(c.updatedAt) : new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    };
+  });
+
+  // Jobs: only active jobs
+  const activeJobs = await getActiveJobSlugs();
+  const jobPages: MetadataRoute.Sitemap = activeJobs.map((j: any) => {
+    const citySlug = (j as any).cityId === 3 ? "indore" : (j as any).cityId === 6 ? "bhopal" : "nagpur";
+    return {
+      url: `${baseUrl}/${citySlug}/job/${j.slug}`,
+      lastModified: new Date(j.postedAt),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    };
+  });
+
+  // Events: only upcoming verified events
+  const eventPages: MetadataRoute.Sitemap = getAllEvents()
+    .filter((e) => e.status === "UPCOMING" && new Date(e.date) >= new Date())
+    .map((e) => {
+      const citySlug = (e as any).cityId === 3 || e.location?.includes("Indore") || e.venue?.includes("Indore") ? "indore" : (e as any).cityId === 6 || e.location?.includes("Bhopal") ? "bhopal" : "nagpur";
+      return {
+        url: `${baseUrl}/${citySlug}/event/${e.slug}`,
+        lastModified: new Date(e.date),
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      };
+    });
+
+  const { walkins: activeWalkins } = await getWalkins({ freshness: "upcoming" });
+  const walkinPages: MetadataRoute.Sitemap = activeWalkins.map((w) => ({
+    url: `${baseUrl}/walkins/${w.slug}`,
+    lastModified: new Date(w.walkinDate),
     changeFrequency: "daily" as const,
-    priority: 0.7,
-  }));
-
-  const eventPages: MetadataRoute.Sitemap = getAllEvents().map((e) => ({
-    url: `${baseUrl}/event/${e.slug}`,
-    lastModified: new Date(e.date),
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
+    priority: 0.8,
   }));
 
   const founderPages: MetadataRoute.Sitemap = getAllFounders().map((f) => ({
@@ -133,22 +226,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
-  const areaSlugs = ["mihan", "it-park", "dharampeth", "civil-lines", "sadar", "wardha-road", "pratap-nagar", "laxmi-nagar"];
-  const areaPages: MetadataRoute.Sitemap = areaSlugs.map((slug) => ({
-    url: `${baseUrl}/areas/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
-
   return [
     ...staticPages,
-    ...sectorPages,
+    ...cityPages,
     ...companyPages,
     ...jobPages,
+    ...walkinPages,
     ...eventPages,
     ...founderPages,
     ...talentPages,
-    ...areaPages,
   ];
 }

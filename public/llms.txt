@@ -1,0 +1,35 @@
+# Central India Tech (centralindiatech.com)
+
+> Central India Tech is the premier open platform for discovering startups, technology employers, hiring drives, walk-in interviews, tech founders, and ecosystem opportunities across Nagpur (Maharashtra), Indore (Madhya Pradesh), and Bhopal (Madhya Pradesh).
+
+## Overview
+- Website: https://centralindiatech.com
+- Coverage: Nagpur, Indore, and Bhopal
+- Core Verticals: Startups, IT Services, Enterprise Engineering, Active Job Openings, Walk-In Interviews, Tech Community Events, Founder Profiles.
+
+## Regional Hubs
+
+### 1. Nagpur, Maharashtra
+- Hub Focus: MIHAN SEZ, IT Park (Gayatri Nagar / Parsodi), Civil Lines, Dharampeth, Ramdaspeth.
+- Ecosystem: 73+ verified technology companies and startups including Infocepts, Persistent Systems, HCLTech, GlobalLogic, Nice Software Solutions, Click2Cloud, COJAG Smart Technology, UniKisan.ai, Perky.ai, Ecozen Solutions (Nagpur heritage), Talentrise Technokrate, GrowNixt, X Cyber Squad, Zappkode, Unisoft Technologies, Shul Ventures, Great Place IT Services, Brainz1, Algo Blitz, Fireblaze, and Prevoyance.
+- Directory: https://centralindiatech.com/nagpur/startups
+- Jobs: https://centralindiatech.com/nagpur/jobs
+
+### 2. Indore, Madhya Pradesh
+- Hub Focus: Super Corridor, Vijay Nagar, Crystal IT Park, Pithampur Industrial & Tech Zone, Palasia, AB Road.
+- Ecosystem: 150+ verified startups and enterprises including STAGE, Shopkirana, Gramophone, ClassMonitor, Supersourcing, MSG91 / Walkover, InfoBeans Technologies, Pataa Navigations, EngineerBabu, OneHash, Ment Tech, GraffersID, RackBank / NeevCloud, Appointy, Arivihan, Micro Mitti, Symbiotec Pharmalab, Impetus Technologies, YASH Technologies, Systango Technologies, Beyond Key, Deqode, Codezilla, CDN Software Solutions, Annova Solutions, Buildpan, VoiceOwl, Onetab, Cosverse AI, viaSocket, Recooty, Finodaya Capital, YatriKart, Sellxpert, Nextel, Brain Above, Emorphis, Softinator, Nagar Software, Robotronix, Everincodeh, JS TechAlliance, Avalon, Eagle Techsec, Mosaic Networks, Cal ID, Zoronal, Quikit.ai, PreCallAI, Botriq Innovation, Zon Robotics, DronaMaps, FintastIQ, Alphawizz, Chapter247, ThirdEssential, Hiteshi, Diaspark, Sion Datamatics, Technorizen, Protonshub, Systematix, Webgility, GAMMASTACK, Zehntech, Remphi, Codiant, FabHR, Shoppeez, Myraah IO, BimaKavach, Expressions, GoPaani, Investocafe, SecurityBulls, ListApp, TrustedWebeServices, VOCBOT AI, APPLSIP, gyaandweep.com, Engineer Master, Aoc Technologies, Rashail Agro, iRefill, Innoshakti Labs, Botlab Dynamics, CapitalVia, Textify Analytics, Xalt Analytics, Anaxee Digital Runners, Learner Aid, Curezy, Roadgrid, EM5, Workie, and Pushp Brand.
+- Directory: https://centralindiatech.com/indore/startups
+- Jobs: https://centralindiatech.com/indore/jobs
+
+### 3. Bhopal, Madhya Pradesh
+- Hub Focus: MP Nagar, Govindpura Industrial / IT Zone, Arera Colony, Kolar Road, AIC-RNTU Incubation Hub.
+- Ecosystem: Anchor technology players including Pabbly, IZI Drones, Netlink Software Group, AISECT Tech, CoreCard India, Appcure Technologies, Bionworks Technologies, Racklive, DigiMantra Labs, and Cognizant Technology Solutions.
+- Directory: https://centralindiatech.com/bhopal/startups
+- Jobs: https://centralindiatech.com/bhopal/jobs
+
+## Key Platform Features
+- Walk-In Interview Tracker: https://centralindiatech.com/walkins
+- Interactive Ecosystem Map: Real-time geospatial mapping of verified IT parks and startup clusters.
+- Public Submissions: https://centralindiatech.com/submit
+- Production Content Management: Protected server-authenticated CMS for directory curation.
+- Open Data Standards: Compliant with Schema.org (Organization, WebSite, JobPosting, Event), XML Sitemaps, and robots.txt.

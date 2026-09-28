@@ -5,6 +5,8 @@ import { cn, eventUrl, formatDate } from "@/lib/utils";
 interface EventCardProps {
   title: string;
   slug: string;
+  citySlug?: string;
+  cityId?: number | null;
   description?: string | null;
   eventType?: string | null;
   organizer?: string | null;
@@ -45,6 +47,8 @@ const eventTypeColors: Record<string, string> = {
 export function EventCard({
   title,
   slug,
+  citySlug,
+  cityId,
   description,
   eventType,
   organizer,
@@ -61,9 +65,16 @@ export function EventCard({
   const month = d.toLocaleDateString("en-IN", { month: "short" }).toUpperCase();
   const day = d.getDate();
 
+  const activeCity =
+    citySlug ||
+    (cityId === 3 ? "indore" : cityId === 1 ? "nagpur" : undefined) ||
+    (location?.toLowerCase().includes("indore") || venue?.toLowerCase().includes("indore")
+      ? "indore"
+      : "nagpur");
+
   return (
     <Link
-      href={eventUrl(slug)}
+      href={eventUrl(slug, activeCity)}
       className={cn(
         "group relative flex rounded-xl border bg-card overflow-hidden card-hover",
         featured && "ring-2 ring-amber-200 border-amber-200",

@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Building2, MapPin, Users, ExternalLink } from "lucide-react";
 import { cn, companyUrl, truncate } from "@/lib/utils";
 
 interface CompanyCardProps {
   name: string;
   slug: string;
+  citySlug?: string;
+  cityId?: number | null;
   logoUrl?: string | null;
   descriptionShort?: string | null;
   sector?: string | null;
@@ -22,6 +25,8 @@ interface CompanyCardProps {
 export function CompanyCard({
   name,
   slug,
+  citySlug,
+  cityId,
   logoUrl,
   descriptionShort,
   sector,
@@ -33,9 +38,19 @@ export function CompanyCard({
   verificationStatus,
   className,
 }: CompanyCardProps) {
+  const pathname = usePathname();
+  const currentCity =
+    citySlug ||
+    (cityId === 3 ? "indore" : cityId === 1 ? "nagpur" : undefined) ||
+    (pathname?.startsWith("/indore")
+      ? "indore"
+      : locationName?.toLowerCase().includes("indore")
+      ? "indore"
+      : "nagpur");
+
   return (
     <Link
-      href={companyUrl(slug)}
+      href={companyUrl(slug, currentCity)}
       className={cn(
         "group relative flex flex-col rounded-xl border bg-card p-5 card-hover",
         featured && "ring-2 ring-amber-200 border-amber-200",

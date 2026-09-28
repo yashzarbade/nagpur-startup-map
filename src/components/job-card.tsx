@@ -7,6 +7,8 @@ interface JobCardProps {
   slug: string;
   companyName: string;
   companySlug: string;
+  citySlug?: string;
+  cityId?: number | null;
   companyLogo?: string | null;
   location?: string | null;
   remoteType?: string | null;
@@ -41,6 +43,8 @@ export function JobCard({
   slug,
   companyName,
   companySlug,
+  citySlug,
+  cityId,
   companyLogo,
   location,
   remoteType,
@@ -55,6 +59,11 @@ export function JobCard({
   featured,
   className,
 }: JobCardProps) {
+  const activeCity =
+    citySlug ||
+    (cityId === 3 ? "indore" : cityId === 1 ? "nagpur" : undefined) ||
+    (location?.toLowerCase().includes("indore") ? "indore" : "nagpur");
+
   const freshness = getFreshnessLevel(postedAt);
 
   return (
@@ -93,13 +102,13 @@ export function JobCard({
         </div>
         <div className="min-w-0 flex-1">
           <Link
-            href={jobUrl(slug)}
+            href={jobUrl(slug, activeCity)}
             className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors line-clamp-1 block"
           >
             {title}
           </Link>
           <Link
-            href={companyUrl(companySlug)}
+            href={companyUrl(companySlug, activeCity)}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {companyName}

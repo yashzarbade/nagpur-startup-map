@@ -1,6 +1,23 @@
-import type { companies, jobs, events, founders, talentProfiles } from "@/db/schema";
+import type {
+  cities,
+  companies,
+  jobs,
+  events,
+  founders,
+  talentProfiles,
+  userProfiles,
+  submissions,
+  claims,
+  savedJobs,
+  savedCompanies,
+  notifications,
+  jobSourceHealth,
+} from "@/db/schema";
 
 // ─── Database entity types (inferred from Drizzle schema) ───────────────────
+
+export type City = typeof cities.$inferSelect;
+export type NewCity = typeof cities.$inferInsert;
 
 export type Company = typeof companies.$inferSelect;
 export type NewCompany = typeof companies.$inferInsert;
@@ -16,6 +33,22 @@ export type NewFounder = typeof founders.$inferInsert;
 
 export type TalentProfile = typeof talentProfiles.$inferSelect;
 export type NewTalentProfile = typeof talentProfiles.$inferInsert;
+
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type NewUserProfile = typeof userProfiles.$inferInsert;
+
+export type Submission = typeof submissions.$inferSelect;
+export type NewSubmission = typeof submissions.$inferInsert;
+
+export type Claim = typeof claims.$inferSelect;
+export type NewClaim = typeof claims.$inferInsert;
+
+export type SavedJob = typeof savedJobs.$inferSelect;
+export type SavedCompany = typeof savedCompanies.$inferSelect;
+
+export type Notification = typeof notifications.$inferSelect;
+export type JobSourceHealth = typeof jobSourceHealth.$inferSelect;
+export type NewJobSourceHealth = typeof jobSourceHealth.$inferInsert;
 
 // ─── View types (enriched types for UI consumption) ─────────────────────────
 
@@ -62,6 +95,43 @@ export type JobCard = {
   currency: string | null;
   skills: string | null;
   postedAt: Date;
+  featured: boolean;
+  isWalkin?: boolean;
+  walkinDate?: Date | null;
+  walkinStartTime?: string | null;
+  walkinEndTime?: string | null;
+  walkinVenue?: string | null;
+  verificationStatus?: string;
+  sourceType?: string | null;
+  sourceUrl?: string | null;
+  applicationUrl?: string | null;
+};
+
+export type WalkinCard = {
+  id: number;
+  title: string;
+  slug: string;
+  companyName: string;
+  companySlug: string;
+  companyLogo: string | null;
+  location: string | null;
+  cityId: number | null;
+  cityName?: string;
+  citySlug?: string;
+  walkinDate: Date;
+  walkinStartTime: string | null;
+  walkinEndTime: string | null;
+  walkinVenue: string | null;
+  experienceMin: number | null;
+  experienceMax: number | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  skills: string | null;
+  applicationUrl: string | null;
+  sourceUrl: string | null;
+  sourceType: string | null;
+  verificationStatus: string;
+  status: string;
   featured: boolean;
 };
 
@@ -128,6 +198,8 @@ export type StartupFilters = {
   stage?: string;
   teamSize?: string;
   foundedYear?: string;
+  cityId?: number;
+  citySlug?: string;
   sort?: "newest" | "oldest" | "az" | "za" | "team-size";
   page?: number;
 };
@@ -140,7 +212,19 @@ export type JobFilters = {
   experience?: string;
   department?: string;
   freshness?: "today" | "week" | "month";
+  cityId?: number;
+  citySlug?: string;
   sort?: "newest" | "salary-high" | "salary-low";
+  page?: number;
+  isWalkin?: boolean;
+};
+
+export type WalkinFilters = {
+  search?: string;
+  citySlug?: string;
+  cityId?: number;
+  freshness?: "upcoming" | "today" | "all";
+  sort?: "upcoming" | "newest";
   page?: number;
 };
 
@@ -166,4 +250,5 @@ export type MapMarker = {
   latitude: number;
   longitude: number;
   hiring: boolean;
+  cityId?: number | null;
 };

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="citGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#fed7aa" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Rounded App Icon Background -->
+  <rect width="100" height="100" rx="24" fill="url(#citGrad)" />
+
+  <!-- Subtle Inner Ring -->
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="2" />
+
+  <!-- Central Tech Pin & Circuit Nodes (Central India Tech Motif) -->
+  <g filter="url(#glow)">
+    <!-- Main Location Pin Outline -->
+    <path 
+      d="M50 18 C35 18 24 29 24 43 C24 59 44 77 48.5 81.2 C49.4 82 50.6 82 51.5 81.2 C56 77 76 59 76 43 C76 29 65 18 50 18 Z" 
+      fill="url(#accentGrad)" 
+    />
+    
+    <!-- Central Hub Core (Orange Cutout) -->
+    <circle cx="50" cy="42" r="14" fill="#ea580c" />
+    
+    <!-- Glowing Tech Circuit Dot (White) -->
+    <circle cx="50" cy="42" r="6" fill="#ffffff" />
+    
+    <!-- Connected Satellite Nodes (Nagpur, Indore, Bhopal) -->
+    <circle cx="34" cy="40" r="3" fill="#ffffff" opacity="0.9" />
+    <circle cx="66" cy="40" r="3" fill="#ffffff" opacity="0.9" />
+    <circle cx="50" cy="26" r="3" fill="#ffffff" opacity="0.9" />
+    
+    <!-- Fine Circuit Connecting Traces -->
+    <line x1="37" y1="40" x2="44" y2="42" stroke="#ea580c" stroke-width="2" stroke-linecap="round" />
+    <line x1="63" y1="40" x2="56" y2="42" stroke="#ea580c" stroke-width="2" stroke-linecap="round" />
+    <line x1="50" y1="29" x2="50" y2="36" stroke="#ea580c" stroke-width="2" stroke-linecap="round" />
+  </g>
+</svg>

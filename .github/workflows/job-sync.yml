@@ -1,0 +1,96 @@
+name: Central India Tech — Job Automation & Walk-In Sync
+
+on:
+  schedule:
+    # Run approximately every 3 hours (00:15, 03:15, 06:15, 09:15, 12:15, 15:15, 18:15, 21:15 UTC)
+    - cron: '15 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      city:
+        description: 'Target city to collect (nagpur, indore, bhopal, or all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - nagpur
+          - indore
+          - bhopal
+      source:
+        description: 'Source filter (all, jobspy, ats, telegram)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - jobspy
+          - ats
+          - telegram
+
+# Prevent overlapping sync runs on production database
+concurrency:
+  group: central-india-job-sync
+  cancel-in-progress: false
+
+jobs:
+  job-sync:
+    name: Ingest & Revalidate Central India Jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci || npm install --prefer-offline
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/job_automation/requirements.txt
+
+      - name: Stage 1 — ATS & Career Pages Ingestion (Node)
+        if: "${{ github.event.inputs.source == '' || github.event.inputs.source == 'all' || github.event.inputs.source == 'ats' }}"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Executing ATS & Career Page job collectors..."
+          npx tsx scripts/run-sync.ts
+
+      - name: Stage 2 — JobSpy & Telegram Automation (Python)
+        if: "${{ github.event.inputs.source == '' || github.event.inputs.source == 'all' || github.event.inputs.source == 'jobspy' || github.event.inputs.source == 'telegram' }}"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
+        run: |
+          CITY_ARG=""
+          if [ "${{ github.event.inputs.city }}" != "all" ] && [ -n "${{ github.event.inputs.city }}" ]; then
+            CITY_ARG="--city ${{ github.event.inputs.city }}"
+          fi
+
+          SOURCE_ARG=""
+          if [ "${{ github.event.inputs.source }}" != "all" ] && [ -n "${{ github.event.inputs.source }}" ]; then
+            SOURCE_ARG="--source ${{ github.event.inputs.source }}"
+          fi
+
+          echo "Running Python Automation with args: $CITY_ARG $SOURCE_ARG"
+          python scripts/job_automation/run_automation.py $CITY_ARG $SOURCE_ARG
+
+      - name: Stage 3 — Production Revalidation & Metrics
+        run: |
+          echo "✅ Job synchronization workflow completed safely."

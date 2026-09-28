@@ -1,0 +1,72 @@
+{
+  "categories": {
+    "it_tech": {
+      "name": "IT & Technology",
+      "enabled": true,
+      "keywords": [
+        "Software Engineer",
+        "Software Developer",
+        "Full Stack Developer",
+        "Frontend Developer",
+        "Backend Developer",
+        "React Developer",
+        "Node.js Developer",
+        "Java Developer",
+        "Python Developer",
+        "AI Engineer",
+        "ML Engineer",
+        "Data Analyst",
+        "Data Scientist",
+        "DevOps Engineer",
+        "Cloud Engineer",
+        "QA Engineer",
+        "Testing",
+        "Cybersecurity",
+        "UI/UX",
+        "Technical Support",
+        "IT Support",
+        "Networking",
+        "System Administrator"
+      ]
+    },
+    "freshers_internships": {
+      "name": "Internships & Fresher Roles",
+      "enabled": true,
+      "keywords": [
+        "Fresher",
+        "Graduate Engineer Trainee",
+        "GET",
+        "Software Intern",
+        "Developer Intern",
+        "AI Intern",
+        "Data Science Intern",
+        "Trainee",
+        "Apprenticeship",
+        "Off-campus"
+      ]
+    },
+    "other_sectors": {
+      "name": "Other Key Sectors",
+      "enabled": true,
+      "keywords": [
+        "Sales",
+        "Marketing",
+        "HR",
+        "Finance",
+        "Accounting",
+        "Operations",
+        "Customer Support",
+        "Business Development",
+        "Manufacturing",
+        "Mechanical",
+        "Electrical",
+        "Civil",
+        "Healthcare",
+        "Logistics",
+        "Supply Chain",
+        "Banking",
+        "Retail"
+      ]
+    }
+  }
+}

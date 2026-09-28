@@ -1,12 +1,12 @@
 import { db } from "@/db";
 import { founders, companies } from "@/db/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, sql } from "drizzle-orm";
 
 /**
  * Get all founders with company info
  */
-export async function getFounders() {
-  return db
+export async function getFounders(cityId?: number) {
+  const query = db
     .select({
       id: founders.id,
       name: founders.name,
@@ -22,8 +22,15 @@ export async function getFounders() {
       companySlug: companies.slug,
     })
     .from(founders)
-    .leftJoin(companies, eq(founders.companyId, companies.id))
-    .orderBy(asc(founders.name));
+    .leftJoin(companies, eq(founders.companyId, companies.id));
+
+  if (cityId) {
+    return query
+      .where(sql`(${founders.cityId} = ${cityId} OR ${companies.cityId} = ${cityId})`)
+      .orderBy(asc(founders.name));
+  }
+
+  return query.orderBy(asc(founders.name));
 }
 
 /**

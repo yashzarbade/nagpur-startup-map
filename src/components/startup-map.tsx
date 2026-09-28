@@ -2,9 +2,19 @@
 
 import dynamic from "next/dynamic";
 import { Layers } from "lucide-react";
+import type { CompanyData } from "@/lib/data";
+
+export interface StartupMapProps {
+  cityName?: string;
+  citySlug?: string;
+  center?: [number, number];
+  zoom?: number;
+  areas?: Array<{ name: string; lng: number; lat: number; zoom: number }>;
+  companiesList?: CompanyData[];
+}
 
 // Dynamically import the Mapbox map component without SSR
-export const StartupMap = dynamic(
+export const StartupMap = dynamic<StartupMapProps>(
   () => import("@/components/maps/StartupMap"),
   {
     ssr: false,
@@ -13,7 +23,7 @@ export const StartupMap = dynamic(
         <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
           <Layers className="h-6 w-6 text-muted-foreground animate-spin" />
         </div>
-        <p className="text-sm font-semibold text-foreground">Loading Nagpur Startup Map...</p>
+        <p className="text-sm font-semibold text-foreground">Loading Startup Map...</p>
         <p className="text-xs text-muted-foreground mt-1">Preparing interactive Mapbox visualization</p>
       </div>
     ),

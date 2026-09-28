@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!founder) return { title: "Founder Not Found" };
 
   return {
-    title: `${founder.name} — ${founder.role} of ${founder.companyName} | Nagpur`,
-    description: `Learn about ${founder.name}, ${founder.role} of ${founder.companyName} in Nagpur. Read bio, company information, and professional journey.`,
+    title: `${founder.name} — ${founder.role} of ${founder.companyName} | ${founder.location || "Nagpur"}`,
+    description: `Learn about ${founder.name}, ${founder.role} of ${founder.companyName} in ${founder.location || "Nagpur"}. Read bio, company information, and professional journey.`,
     alternates: { canonical: `/founder/${slug}` },
     openGraph: {
       title: `${founder.name} | ${SITE.name}`,
@@ -138,7 +138,7 @@ export default async function FounderDetailPage({ params }: Props) {
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Company Founded</h2>
                   <Link
-                    href={`/company/${company.slug}`}
+                    href={`/${(company as any).cityId === 3 ? "indore" : "nagpur"}/company/${company.slug}`}
                     className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                   >
                     View company details <ArrowRight className="h-3.5 w-3.5" />

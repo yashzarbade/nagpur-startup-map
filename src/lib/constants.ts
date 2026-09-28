@@ -180,12 +180,12 @@ export const JOB_CATEGORIES = [
 // ─── Site Metadata ──────────────────────────────────────────────────────────
 
 export const SITE = {
-  name: "Nagpur Startup Map",
-  tagline: "Discover Nagpur's startups, tech companies, jobs and opportunities.",
+  name: "Central India Tech",
+  tagline: "Discover companies, startups, jobs, events and opportunities across Central India.",
   description:
-    "Explore startups, technology companies, founders, jobs, events and emerging businesses across Nagpur.",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "https://nagpurstartupmap.com",
-  twitter: "@nagpurstartups",
+    "Explore startups, technology companies, founders, jobs, events and emerging businesses across Central India, featuring Nagpur, Indore, and Bhopal.",
+  url: process.env.NEXT_PUBLIC_SITE_URL || "https://centralindiatech.com",
+  twitter: "@centralindiatech",
   defaultCity: "Nagpur",
   defaultState: "Maharashtra",
   defaultCountry: "India",

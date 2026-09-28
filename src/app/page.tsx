@@ -10,350 +10,281 @@ import {
   TrendingUp,
   Plus,
   Sparkles,
+  Compass,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
-import { SITE, SECTORS } from "@/lib/constants";
 import { CompanyCard } from "@/components/company-card";
 import { JobCard } from "@/components/job-card";
-import { EventCard } from "@/components/event-card";
 import { StartupMap } from "@/components/startup-map";
-import {
-  COMPANIES_DATA,
-  JOBS_DATA,
-  EVENTS_DATA,
-  getFeaturedCompanies,
-  getHiringCompanies,
-  getStats,
-} from "@/lib/data";
+import { getCompanies, getHiringCompanies } from "@/lib/queries/companies";
+import { getLatestJobs, countActiveJobs } from "@/lib/queries/jobs";
+import { getEcosystemStats } from "@/lib/queries/stats";
+import { getAllCities } from "@/lib/cities";
+import { COMPANIES_DATA } from "@/lib/data";
 
-export default function HomePage() {
-  const stats = getStats();
-  const hiringCompanies = getHiringCompanies().slice(0, 6);
-  const latestJobs = JOBS_DATA.slice(0, 6);
-  const upcomingEvents = EVENTS_DATA.slice(0, 3);
-  const recentCompanies = COMPANIES_DATA.slice(0, 6);
+export default async function HomePage() {
+  const [allCities, nagpurStats, indoreStats, hiringResult, latestJobs] = await Promise.all([
+    getAllCities(),
+    getEcosystemStats(1), // Nagpur city_id = 1
+    getEcosystemStats(3), // Indore city_id = 3
+    getHiringCompanies(1, 1),
+    getLatestJobs(6, 1),
+  ]);
+
+  const hiringCompanies = hiringResult.companies.slice(0, 6);
 
   return (
     <>
       {/* ═══════════════ Section 1: Hero ═══════════════ */}
       <section className="relative overflow-hidden border-b bg-gradient-to-b from-primary/5 via-background to-background">
-        <div className="bg-pattern absolute inset-0 opacity-40" />
+        <div className="bg-pattern absolute inset-0 opacity-30" />
         <div className="container-page relative py-16 sm:py-20 lg:py-28">
           <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Discover Nagpur&apos;s{" "}
-              <span className="text-gradient">startups, tech companies</span>
-              , jobs and opportunities.
+            {/* Top Pill */}
+            <div className="inline-flex items-center gap-2 rounded-full border bg-muted/70 px-4 py-1.5 text-xs font-semibold text-muted-foreground mb-6 shadow-2xs">
+              <Compass className="h-3.5 w-3.5 text-primary animate-pulse" />
+              <span>Central India Tech • Innovation &amp; Startup Network</span>
+            </div>
+
+            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-foreground">
+              Discover companies, startups, jobs, events &amp; opportunities across{" "}
+              <span className="text-gradient">Central India</span>.
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground sm:text-xl max-w-2xl mx-auto">
-              Explore startups, technology companies, founders, jobs, events and
-              emerging businesses across Nagpur.
+            <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Explore verified technology companies, high-growth startups, real-time jobs, and emerging innovation ecosystems across Nagpur, Indore, and beyond.
             </p>
 
-            {/* Search bar */}
+            {/* Global Search Bar */}
             <div className="mt-8 mx-auto max-w-xl">
               <Link
                 href="/startups?search=true"
-                className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3.5 text-muted-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/30 group"
+                className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3.5 text-muted-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 group"
               >
-                <Search className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                <Search className="h-5 w-5 transition-colors group-hover:text-primary" />
                 <span className="text-sm">
-                  Search startups, jobs, founders or sectors...
+                  Search startups, tech jobs, sectors, founders...
                 </span>
-                <kbd className="hidden sm:inline-flex ml-auto items-center gap-0.5 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  ⌘K
+                <kbd className="ml-auto hidden rounded-lg border bg-muted px-2.5 py-1 text-xs text-muted-foreground sm:inline-block font-mono">
+                  Browse
                 </kbd>
               </Link>
             </div>
-
-            {/* CTAs */}
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link
-                href="/startups"
-                className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 w-full sm:w-auto"
-              >
-                <Building2 className="h-4 w-4 mr-2" />
-                Explore Startups
-              </Link>
-              <Link
-                href="/jobs"
-                className="inline-flex items-center justify-center rounded-lg border px-6 py-3 text-sm font-medium transition-colors hover:bg-accent w-full sm:w-auto"
-              >
-                <Briefcase className="h-4 w-4 mr-2" />
-                Find Jobs
-              </Link>
-              <Link
-                href="/submit"
-                className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Your Startup
-              </Link>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════════════ Section 2: Ecosystem Statistics ═══════════════ */}
-      <section className="border-b">
-        <div className="container-page py-10">
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-            {[
-              { value: stats.totalCompanies, label: "Startups & Companies", icon: Building2 },
-              { value: stats.totalJobs, label: "Open Jobs", icon: Briefcase },
-              { value: stats.totalFounders, label: "Founders", icon: Users },
-              { value: stats.totalEvents, label: "Upcoming Events", icon: Calendar },
-            ].map((stat, i) => (
-              <div
-                key={stat.label}
-                className={`flex flex-col items-center text-center animate-count-up stagger-${i + 1}`}
-                style={{ opacity: 0 }}
-              >
-                <stat.icon className="h-5 w-5 text-primary mb-2" />
-                <span className="text-3xl font-bold tracking-tight">
-                  {stat.value}
+      {/* ═══════════════ Section 2: City Hubs ═══════════════ */}
+      <section className="container-page py-16 border-b">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <h2 className="text-3xl font-bold tracking-tight">Explore Regional Tech Hubs</h2>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+            Select an ecosystem hub to explore its interactive map, verified directory, open roles, and tech events.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          {/* Nagpur City Card (Live) */}
+          <Link
+            href="/nagpur"
+            className="group relative flex flex-col justify-between rounded-3xl border bg-card p-7 shadow-xs transition-all hover:shadow-lg hover:border-primary/50 overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-6 pointer-events-none opacity-10 group-hover:opacity-20 transition-opacity">
+              <Building2 className="h-32 w-32 text-primary" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  Live Ecosystem
                 </span>
-                <span className="text-xs text-muted-foreground mt-1">
-                  {stat.label}
+                <span className="text-xs font-medium text-muted-foreground">
+                  Maharashtra
                 </span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* ═══════════════ Section 3: Explore by Sector ═══════════════ */}
-      <section className="section-spacing">
-        <div className="container-page">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold">Explore Nagpur</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Browse startups by sector
+              <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                Nagpur Hub
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                Central India&apos;s winter capital and premier innovation hub anchored by MIHAN SEZ, IT Park, IIM Nagpur, and {nagpurStats.totalCompanies}+ verified tech companies.
               </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {SECTORS.filter((s) => s.slug !== "other").map((sector) => (
-              <Link
-                key={sector.slug}
-                href={`/startups/${sector.slug}`}
-                className="badge-sector text-sm py-2 px-4"
-              >
-                {sector.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* ═══════════════ Section 4: Hiring Now ═══════════════ */}
-      <section className="section-spacing bg-muted/30 border-y">
-        <div className="container-page">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
-                Hiring Now
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Companies actively hiring in Nagpur
-              </p>
-            </div>
-            <Link
-              href="/hiring"
-              className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              View all hiring companies
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {hiringCompanies.map((company) => (
-              <CompanyCard key={company.slug} {...company} />
-            ))}
-          </div>
-          <div className="mt-6 text-center sm:hidden">
-            <Link
-              href="/hiring"
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary"
-            >
-              View all hiring companies
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════ Section 5: Latest Jobs ═══════════════ */}
-      <section className="section-spacing">
-        <div className="container-page">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold">Latest Jobs</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Fresh opportunities from Nagpur startups and tech companies
-              </p>
-            </div>
-            <Link
-              href="/jobs"
-              className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              Explore all jobs
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {latestJobs.map((job) => (
-              <JobCard key={job.slug} {...job} />
-            ))}
-          </div>
-          <div className="mt-6 text-center sm:hidden">
-            <Link
-              href="/jobs"
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary"
-            >
-              Explore all jobs
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════ Section 6: Interactive Ecosystem Map ═══════════════ */}
-      <section className="section-spacing bg-background">
-        <div className="container-page">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-2">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary mb-2">
-                <MapPin className="h-3 w-3" /> Live Ecosystem Geography
+              {/* City quick stats */}
+              <div className="mt-6 grid grid-cols-3 gap-2 py-3 border-y border-dashed text-center">
+                <div>
+                  <div className="text-lg font-bold text-foreground">
+                    {nagpurStats.totalCompanies}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Startups</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-blue-500">
+                    {nagpurStats.totalJobs}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Open Roles</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-purple-500">
+                    {nagpurStats.totalFounders}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Founders</div>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold">Interactive Startup Map</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Explore technology companies across Nagpur&apos;s primary innovation hubs: MIHAN SEZ, IT Park, Dharampeth, Sadar & Civil Lines.
-              </p>
             </div>
-            <Link
-              href="/startups"
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-            >
-              Full directory list <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
 
-          <StartupMap />
-        </div>
-      </section>
+            <div className="mt-6 flex items-center justify-between text-sm font-semibold text-primary pt-2">
+              <span>Explore Nagpur Hub</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
 
-      {/* ═══════════════ Section 7: Recently Added ═══════════════ */}
-      <section className="section-spacing bg-muted/30 border-y">
-        <div className="container-page">
-          <div className="flex items-center justify-between mb-6">
+          {/* Indore City Card (Live) */}
+          <Link
+            href="/indore"
+            className="group relative flex flex-col justify-between rounded-3xl border bg-card p-7 shadow-xs transition-all hover:shadow-lg hover:border-blue-500/50 overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-6 pointer-events-none opacity-10 group-hover:opacity-20 transition-opacity">
+              <MapPin className="h-32 w-32 text-blue-500" />
+            </div>
+
             <div>
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-amber-500" />
-                Recently Added
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Newest companies on the map
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  Live Ecosystem
+                </span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  Madhya Pradesh
+                </span>
+              </div>
+
+              <h3 className="text-2xl font-bold text-foreground group-hover:text-blue-500 transition-colors flex items-center gap-2">
+                Indore Hub
+              </h3>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                India&apos;s cleanest city and commercial powerhouse, driven by Super Corridor tech parks, Crystal IT Park, IIT &amp; IIM Indore, and {indoreStats.totalCompanies}+ verified companies.
               </p>
+
+              {/* City quick stats */}
+              <div className="mt-6 grid grid-cols-3 gap-2 py-3 border-y border-dashed text-center">
+                <div>
+                  <div className="text-lg font-bold text-foreground">
+                    {indoreStats.totalCompanies}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Startups</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-blue-500">
+                    {indoreStats.totalJobs}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Open Roles</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-purple-500">
+                    {indoreStats.totalFounders}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Founders</div>
+                </div>
+              </div>
             </div>
-            <Link
-              href="/startups"
-              className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              View all startups
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recentCompanies.map((company) => (
-              <CompanyCard key={company.slug} {...company} />
-            ))}
-          </div>
+
+            <div className="mt-6 flex items-center justify-between text-sm font-semibold text-blue-500 pt-2">
+              <span>Launch Indore Ecosystem</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
         </div>
       </section>
 
-      {/* ═══════════════ Section 8: Upcoming Events ═══════════════ */}
-      <section className="section-spacing">
-        <div className="container-page">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold">Upcoming Events</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tech events, meetups and hackathons in Nagpur
-              </p>
+      {/* ═══════════════ Section 3: Live Nagpur Map Preview ═══════════════ */}
+      <section className="container-page py-16">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Live Interactive Visualization
             </div>
-            <Link
-              href="/events"
-              className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              View all events
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {upcomingEvents.map((event) => (
-              <EventCard key={event.slug} {...event} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════ Section 9: Nagpur Tech Ecosystem ═══════════════ */}
-      <section className="section-spacing bg-muted/30 border-y">
-        <div className="container-page">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="text-2xl font-bold mb-4">
-              Nagpur&apos;s Tech Ecosystem
+            <h2 className="text-3xl font-bold tracking-tight">
+              Nagpur Tech &amp; Startup Ecosystem
             </h2>
-            <div className="prose prose-sm text-muted-foreground max-w-none space-y-3">
-              <p>
-                Nagpur&apos;s startup and technology ecosystem is growing rapidly across software, SaaS, AI, manufacturing, logistics, healthcare, education and consumer businesses. As the third-largest city in Maharashtra and the geographic center of India, Nagpur offers unique advantages for technology companies including a growing talent pool, lower operating costs compared to Pune, Mumbai and Bangalore, and improving digital infrastructure.
-              </p>
-              <p>
-                The MIHAN (Multi-modal International Cargo Hub and Airport at Nagpur) Special Economic Zone has attracted major IT companies including TCS, Infosys, HCLTech, Tech Mahindra and Hexaware, while homegrown companies like InfoCepts, Persistent Systems, and Excellon Software have built global businesses from the city.
-              </p>
-              <p>
-                A new wave of startups is emerging in AI, edtech, SaaS and digital services, supported by institutions like IIM Nagpur (through its InFED incubator), VNIT&apos;s Centre for Innovation, and the Google AI Centre of Excellence at IIIT Nagpur. The city&apos;s startup ecosystem is increasingly active with regular meetups, hackathons, and networking events.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════ Section 10: Add to the Map ═══════════════ */}
-      <section className="section-spacing">
-        <div className="container-page">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-bold mb-2">
-              Know a Nagpur startup that isn&apos;t here?
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Help us build the most complete map of Nagpur&apos;s technology ecosystem.
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+              Explore 56+ verified technology companies across MIHAN SEZ, IT Park, Dharampeth, and Civil Lines.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          </div>
+          <Link
+            href="/nagpur"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors self-start sm:self-auto shrink-0"
+          >
+            <span>Open Full Nagpur Map</span>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <StartupMap
+          cityName="Nagpur"
+          citySlug="nagpur"
+          center={[79.0882, 21.1458]}
+          zoom={11}
+          companiesList={COMPANIES_DATA}
+        />
+      </section>
+
+      {/* ═══════════════ Section 4: Live Hiring Startups ═══════════════ */}
+      {hiringCompanies.length > 0 && (
+        <section className="border-t bg-muted/20 py-16">
+          <div className="container-page">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  Startups Hiring Right Now
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Verified companies actively expanding their engineering and product teams
+                </p>
+              </div>
               <Link
-                href="/submit"
-                className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 w-full sm:w-auto"
+                href="/nagpur/hiring"
+                className="hidden sm:flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Startup
-              </Link>
-              <Link
-                href="/submit/job"
-                className="inline-flex items-center justify-center rounded-lg border px-6 py-3 text-sm font-medium transition-colors hover:bg-accent w-full sm:w-auto"
-              >
-                <Briefcase className="h-4 w-4 mr-2" />
-                Post a Job
-              </Link>
-              <Link
-                href="/submit/event"
-                className="inline-flex items-center justify-center rounded-lg border px-6 py-3 text-sm font-medium transition-colors hover:bg-accent w-full sm:w-auto"
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                Add Event
+                <span>View all hiring</span>
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {hiringCompanies.map((company: any) => (
+                <CompanyCard key={company.id} {...company} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ═══════════════ Section 5: Community CTA ═══════════════ */}
+      <section className="container-page py-16">
+        <div className="rounded-3xl border bg-gradient-to-r from-primary/10 via-primary/5 to-background p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-xs">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Building in an emerging tech hub?
+          </h2>
+          <p className="text-muted-foreground mt-3 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
+            Get your company, open jobs, and developer meetups listed on Startup Map. Free forever for the community.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/submit"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add a Startup</span>
+            </Link>
+            <Link
+              href="/submit/job"
+              className="inline-flex items-center gap-2 rounded-xl border bg-card px-6 py-3 text-sm font-semibold hover:bg-accent transition-colors"
+            >
+              <span>Post a Job</span>
+            </Link>
           </div>
         </div>
       </section>

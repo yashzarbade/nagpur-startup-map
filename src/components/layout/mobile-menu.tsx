@@ -2,22 +2,30 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
-const mobileLinks = [
-  { label: "Startups", href: "/startups" },
-  { label: "Jobs", href: "/jobs" },
-  { label: "Events", href: "/events" },
-  { label: "Founders", href: "/founders" },
-  { label: "Hiring", href: "/hiring" },
-  { label: "Talent", href: "/talent" },
-  { label: "Submit", href: "/submit" },
-  { label: "Advertise", href: "/advertise" },
-  { label: "About", href: "/about" },
-];
+const KNOWN_CITIES = ["nagpur", "indore", "bhopal"];
 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  const parts = pathname.split("/").filter(Boolean);
+  const city = parts[0] && KNOWN_CITIES.includes(parts[0]) ? parts[0] : "nagpur";
+
+  const mobileLinks = [
+    { label: "Startups", href: `/${city}/startups` },
+    { label: "Jobs", href: `/${city}/jobs` },
+    { label: "Walk-Ins", href: "/walkins" },
+    { label: "Events", href: `/${city}/events` },
+    { label: "Founders", href: `/${city}/founders` },
+    { label: "Hiring", href: `/${city}/hiring` },
+    { label: "Talent", href: "/talent" },
+    { label: "Submit", href: "/submit" },
+    { label: "Advertise", href: "/advertise" },
+    { label: "About", href: "/about" },
+  ];
 
   return (
     <div className="md:hidden">

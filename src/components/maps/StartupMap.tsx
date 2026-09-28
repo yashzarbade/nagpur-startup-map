@@ -17,7 +17,13 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
-import { COMPANIES_DATA, JOBS_DATA, CompanyData } from "@/lib/data";
+import {
+  COMPANIES_DATA,
+  JOBS_DATA,
+  INDORE_COMPANIES_DATA,
+  INDORE_JOBS_DATA,
+  CompanyData,
+} from "@/lib/data";
 
 // Color mapping for sector markers
 const SECTOR_COLORS: Record<string, string> = {
@@ -51,6 +57,28 @@ const NAGPUR_AREAS = [
   { name: "Central Avenue", lng: 79.1150, lat: 21.1510, zoom: 14 },
 ];
 
+const INDORE_AREAS = [
+  { name: "All Indore", lng: 75.8577, lat: 22.7196, zoom: 11 },
+  { name: "Super Corridor", lng: 75.8115, lat: 22.7560, zoom: 13.5 },
+  { name: "Vijay Nagar", lng: 75.8937, lat: 22.7533, zoom: 14 },
+  { name: "Crystal IT Park", lng: 75.8647, lat: 22.6841, zoom: 14 },
+  { name: "Palasia", lng: 75.8872, lat: 22.7230, zoom: 14 },
+  { name: "Bhawarkua", lng: 75.8665, lat: 22.6922, zoom: 14 },
+  { name: "AB Road", lng: 75.8790, lat: 22.7285, zoom: 14 },
+  { name: "Pithampur Tech Zone", lng: 75.6800, lat: 22.6100, zoom: 13 },
+  { name: "MR 10", lng: 75.8800, lat: 22.7650, zoom: 14 },
+  { name: "Geeta Bhawan", lng: 75.8770, lat: 22.7180, zoom: 14 },
+];
+
+const BHOPAL_AREAS = [
+  { name: "All Bhopal", lng: 77.4126, lat: 23.2599, zoom: 11 },
+  { name: "MP Nagar", lng: 77.4339, lat: 23.2332, zoom: 14 },
+  { name: "Arera Colony", lng: 77.4290, lat: 23.2120, zoom: 14 },
+  { name: "Govindpura IT Zone", lng: 77.4490, lat: 23.2560, zoom: 13.5 },
+  { name: "Kolar Road", lng: 77.4190, lat: 23.1870, zoom: 14 },
+  { name: "Indrapuri / BHEL", lng: 77.4680, lat: 23.2510, zoom: 14 },
+];
+
 const SECTOR_OPTIONS = [
   "All",
   "AI",
@@ -67,14 +95,57 @@ const SECTOR_OPTIONS = [
   "Software",
 ];
 
-export default function StartupMap() {
+export interface StartupMapProps {
+  cityName?: string;
+  citySlug?: string;
+  center?: [number, number];
+  zoom?: number;
+  areas?: Array<{ name: string; lng: number; lat: number; zoom: number }>;
+  companiesList?: CompanyData[];
+}
+
+export default function StartupMap({
+  cityName = "Nagpur",
+  citySlug = "nagpur",
+  center,
+  zoom = 11,
+  areas,
+  companiesList,
+}: StartupMapProps = {}) {
   const router = useRouter();
   const mapContainerRef = React.useRef<HTMLDivElement>(null);
   const mapInstanceRef = React.useRef<mapboxgl.Map | null>(null);
   const popupRef = React.useRef<mapboxgl.Popup | null>(null);
+  const [isMobileMapCollapsed, setIsMobileMapCollapsed] = React.useState(false);
+
+  const defaultCenter: [number, number] = React.useMemo(() => {
+    if (center) return center;
+    if (citySlug === "indore") return [75.8577, 22.7196];
+    if (citySlug === "bhopal") return [77.4126, 23.2599];
+    return [79.0882, 21.1458];
+  }, [center, citySlug]);
+
+  const effectiveCompanies = React.useMemo(() => {
+    if (companiesList && companiesList.length > 0) return companiesList;
+    if (citySlug === "indore") {
+      return INDORE_COMPANIES_DATA;
+    }
+    return COMPANIES_DATA;
+  }, [citySlug, companiesList]);
+
+  const effectiveAreas = React.useMemo(() => {
+    if (areas && areas.length > 0 && areas !== NAGPUR_AREAS) return areas;
+    if (citySlug === "indore") {
+      return INDORE_AREAS;
+    }
+    if (citySlug === "bhopal") {
+      return BHOPAL_AREAS;
+    }
+    return NAGPUR_AREAS;
+  }, [areas, citySlug]);
 
   const [selectedSector, setSelectedSector] = React.useState<string>("All");
-  const [selectedArea, setSelectedArea] = React.useState<string>("All Nagpur");
+  const [selectedArea, setSelectedArea] = React.useState<string>(`All ${cityName}`);
   const [activeCompany, setActiveCompany] = React.useState<CompanyData | null>(null);
   const [mapLoaded, setMapLoaded] = React.useState(false);
   const [mapError, setMapError] = React.useState<string | null>(null);
@@ -83,20 +154,21 @@ export default function StartupMap() {
 
   // Filter companies based on sector selection
   const filteredCompanies = React.useMemo(() => {
-    return COMPANIES_DATA.filter((c) => {
+    return effectiveCompanies.filter((c) => {
       if (selectedSector === "All") return true;
-      return c.sector === selectedSector || c.tags.includes(selectedSector);
+      return c.sector === selectedSector || (c.tags && c.tags.includes(selectedSector));
     });
-  }, [selectedSector]);
+  }, [selectedSector, effectiveCompanies]);
 
   // Convert companies to GeoJSON feature collection
   const geojsonData = React.useMemo(() => {
+    const jobsList = citySlug === "indore" ? INDORE_JOBS_DATA : JOBS_DATA;
     return {
       type: "FeatureCollection" as const,
       features: filteredCompanies.map((c) => {
         const lng = parseFloat(c.longitude);
         const lat = parseFloat(c.latitude);
-        const jobsCount = JOBS_DATA.filter((j) => j.companySlug === c.slug).length;
+        const jobsCount = jobsList.filter((j) => j.companySlug === c.slug).length;
         return {
           type: "Feature" as const,
           geometry: {
@@ -120,7 +192,7 @@ export default function StartupMap() {
         };
       }),
     };
-  }, [filteredCompanies]);
+  }, [filteredCompanies, citySlug]);
 
   // Initialize Mapbox map
   React.useEffect(() => {
@@ -142,8 +214,8 @@ export default function StartupMap() {
       const map = new mapboxgl.Map({
         container: mapContainerRef.current,
         style: "mapbox://styles/mapbox/streets-v12",
-        center: [79.0882, 21.1458], // Nagpur Center [lng, lat]
-        zoom: 11,
+        center: defaultCenter,
+        zoom: zoom,
         minZoom: 8,
         maxZoom: 18,
         attributionControl: true, // Keep Mapbox attribution visible per terms
@@ -287,7 +359,7 @@ export default function StartupMap() {
           }
 
           // Find company in data
-          const fullCompany = COMPANIES_DATA.find((c) => c.slug === props.slug);
+          const fullCompany = (effectiveCompanies || COMPANIES_DATA).find((c: any) => c.slug === props.slug);
           if (fullCompany) {
             setActiveCompany(fullCompany);
           }
@@ -346,7 +418,7 @@ export default function StartupMap() {
           const btn = popupContent.querySelector(`#view-company-btn-${props.slug}`);
           if (btn) {
             btn.addEventListener("click", () => {
-              router.push(`/company/${props.slug}`);
+              router.push(`/${citySlug || "nagpur"}/company/${props.slug}`);
             });
           }
 
@@ -407,7 +479,7 @@ export default function StartupMap() {
   }, [geojsonData, mapLoaded]);
 
   // Area jump fly-to
-  const handleAreaClick = (area: typeof NAGPUR_AREAS[0]) => {
+  const handleAreaClick = (area: { name: string; lng: number; lat: number; zoom: number }) => {
     setSelectedArea(area.name);
     const map = mapInstanceRef.current;
     if (map) {
@@ -448,10 +520,10 @@ export default function StartupMap() {
 
         {/* Quick fallback startup cards grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mt-8 text-left">
-          {COMPANIES_DATA.slice(0, 3).map((c) => (
+          {filteredCompanies.slice(0, 3).map((c: any) => (
             <Link
               key={c.slug}
-              href={`/company/${c.slug}`}
+              href={`/${citySlug || "nagpur"}/company/${c.slug}`}
               className="p-3.5 rounded-xl border bg-background hover:border-primary/50 transition-colors shadow-xs group"
             >
               <div className="flex items-center justify-between mb-1">
@@ -467,51 +539,78 @@ export default function StartupMap() {
   }
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border shadow-lg bg-card min-h-[520px] sm:min-h-[620px]">
-      {/* Top Filter and Controls Overlay */}
-      <div className="absolute top-3.5 left-3.5 right-14 z-10 flex flex-wrap items-center gap-2 pointer-events-none">
-        {/* Sector Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-background/90 backdrop-blur-md rounded-xl border shadow-sm pointer-events-auto">
-          {SECTOR_OPTIONS.map((sector) => (
-            <button
-              key={sector}
-              onClick={() => setSelectedSector(sector)}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                selectedSector === sector
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              {sector}
-            </button>
-          ))}
-        </div>
-
-        {/* Quick Area Jump */}
-        <div className="hidden lg:flex items-center gap-1 p-1.5 bg-background/90 backdrop-blur-md rounded-xl border shadow-sm pointer-events-auto">
-          <MapPin className="h-3.5 w-3.5 text-primary ml-1.5 mr-0.5" />
-          {NAGPUR_AREAS.map((area) => (
-            <button
-              key={area.name}
-              onClick={() => handleAreaClick(area)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                selectedArea === area.name
-                  ? "bg-accent text-accent-foreground font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {area.name}
-            </button>
-          ))}
-        </div>
+    <div className={`relative w-full rounded-2xl overflow-hidden border shadow-lg bg-card transition-all duration-300 ${isMobileMapCollapsed ? "h-14 min-h-[56px]" : "min-h-[480px] sm:min-h-[620px]"}`}>
+      {/* Mobile Collapse Toggle Button */}
+      <div className="sm:hidden absolute top-2.5 right-2.5 z-20 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => setIsMobileMapCollapsed(!isMobileMapCollapsed)}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-background/95 backdrop-blur-md border shadow-xs text-foreground hover:bg-muted"
+        >
+          <Layers className="h-3 w-3 text-primary" />
+          <span>{isMobileMapCollapsed ? "Expand Map" : "Collapse"}</span>
+        </button>
       </div>
 
-      {/* Mapbox Canvas Container (with explicit height and responsive fill) */}
-      <div
-        ref={mapContainerRef}
-        className="w-full h-[520px] sm:h-[620px] bg-muted/20"
-        style={{ minHeight: "520px" }}
-      />
+      {isMobileMapCollapsed ? (
+        <div 
+          onClick={() => setIsMobileMapCollapsed(false)}
+          className="w-full h-14 flex items-center justify-between px-4 cursor-pointer hover:bg-muted/40 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span>Interactive {cityName} Map ({effectiveCompanies.length} pins)</span>
+          </div>
+          <span className="text-[11px] text-primary font-medium hover:underline">Tap to view map →</span>
+        </div>
+      ) : (
+        <>
+          {/* Top Filter and Controls Overlay */}
+          <div className="absolute top-3 left-3 right-24 sm:right-14 z-10 flex flex-nowrap items-center gap-2 pointer-events-none overflow-x-auto scrollbar-none pb-1">
+            {/* Sector Pills */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-background/90 backdrop-blur-md rounded-xl border shadow-sm pointer-events-auto shrink-0">
+              {SECTOR_OPTIONS.map((sector) => (
+                <button
+                  key={sector}
+                  onClick={() => setSelectedSector(sector)}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                    selectedSector === sector
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {sector}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Area Jump */}
+            <div className="hidden lg:flex items-center gap-1 p-1.5 bg-background/90 backdrop-blur-md rounded-xl border shadow-sm pointer-events-auto shrink-0">
+              <MapPin className="h-3.5 w-3.5 text-primary ml-1.5 mr-0.5" />
+              {effectiveAreas.map((area) => (
+                <button
+                  key={area.name}
+                  onClick={() => handleAreaClick(area)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                    selectedArea === area.name
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {area.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mapbox Canvas Container */}
+          <div
+            ref={mapContainerRef}
+            className="w-full h-[480px] sm:h-[620px] bg-muted/20"
+            style={{ minHeight: "480px" }}
+          />
+        </>
+      )}
 
       {/* Bottom Floating Card for Selected Company */}
       {activeCompany && (
@@ -548,7 +647,7 @@ export default function StartupMap() {
                   <span className="font-medium text-foreground">{activeCompany.sector}</span>
                   <span>•</span>
                   <span className="flex items-center gap-0.5">
-                    <MapPin className="h-3 w-3" /> {activeCompany.locationName}, Nagpur
+                    <MapPin className="h-3 w-3" /> {activeCompany.locationName}, {cityName}
                   </span>
                 </div>
               </div>
@@ -579,7 +678,7 @@ export default function StartupMap() {
               <span className="text-[11px] text-muted-foreground">Team: {activeCompany.teamSize}</span>
             </div>
             <Link
-              href={`/company/${activeCompany.slug}`}
+              href={`/${citySlug}/company/${activeCompany.slug}`}
               className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
             >
               View Company <ArrowRight className="h-3.5 w-3.5" />

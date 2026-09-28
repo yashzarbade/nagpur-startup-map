@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
+import { SITE } from "@/lib/constants";
 
 interface BreadcrumbItem {
   label: string;
@@ -11,6 +12,7 @@ interface BreadcrumbsProps {
 }
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
+  const baseUrl = SITE.url;
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -19,7 +21,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: process.env.NEXT_PUBLIC_SITE_URL || "https://nagpurstartupmap.com",
+        item: baseUrl,
       },
       ...items.map((item, index) => ({
         "@type": "ListItem",
@@ -27,7 +29,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
         name: item.label,
         ...(item.href
           ? {
-              item: `${process.env.NEXT_PUBLIC_SITE_URL || "https://nagpurstartupmap.com"}${item.href}`,
+              item: `${baseUrl}${item.href}`,
             }
           : {}),
       })),

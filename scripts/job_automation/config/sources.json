@@ -1,0 +1,63 @@
+{
+  "cities": [
+    {
+      "slug": "nagpur",
+      "name": "Nagpur",
+      "state": "Maharashtra",
+      "country": "India",
+      "search_location": "Nagpur, Maharashtra, India",
+      "city_id": 1,
+      "enabled": true
+    },
+    {
+      "slug": "indore",
+      "name": "Indore",
+      "state": "Madhya Pradesh",
+      "country": "India",
+      "search_location": "Indore, Madhya Pradesh, India",
+      "city_id": 3,
+      "enabled": true
+    },
+    {
+      "slug": "bhopal",
+      "name": "Bhopal",
+      "state": "Madhya Pradesh",
+      "country": "India",
+      "search_location": "Bhopal, Madhya Pradesh, India",
+      "city_id": 6,
+      "enabled": true
+    }
+  ],
+  "jobspy": {
+    "enabled": true,
+    "max_results_per_query": 15,
+    "hours_old": 72,
+    "sources": {
+      "indeed": {
+        "enabled": true,
+        "rate_limit_delay_sec": 2,
+        "timeout_sec": 30
+      },
+      "linkedin": {
+        "enabled": true,
+        "rate_limit_delay_sec": 3,
+        "timeout_sec": 30
+      },
+      "naukri": {
+        "enabled": true,
+        "rate_limit_delay_sec": 2,
+        "timeout_sec": 30
+      }
+    }
+  },
+  "telegram": {
+    "enabled": true,
+    "max_messages_per_channel": 30,
+    "historical_window_days": 7
+  },
+  "retry": {
+    "max_retries": 3,
+    "backoff_factor": 1.5,
+    "jitter_sec": 1.0
+  }
+}

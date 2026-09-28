@@ -1,5 +1,6 @@
 export interface CompanyData {
   id: number;
+  cityId?: number;
   name: string;
   slug: string;
   websiteUrl: string;
@@ -28,6 +29,7 @@ export interface CompanyData {
 
 export interface FounderData {
   id: number;
+  cityId?: number;
   name: string;
   slug: string;
   role: string;
@@ -42,6 +44,7 @@ export interface FounderData {
 
 export interface JobData {
   id: number;
+  cityId?: number;
   title: string;
   slug: string;
   companySlug: string;
@@ -50,9 +53,9 @@ export interface JobData {
   description: string;
   location: string;
   remoteType: "ON_SITE" | "REMOTE" | "HYBRID";
-  employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP";
-  experienceMin: number;
-  experienceMax: number;
+  employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERNSHIP" | "FREELANCE";
+  experienceMin?: number | null;
+  experienceMax?: number | null;
   salaryMin?: number | null;
   salaryMax?: number | null;
   currency: string;
@@ -60,16 +63,17 @@ export interface JobData {
   applicationUrl: string;
   department: string;
   postedAt: string;
-  expiresAt: string;
+  expiresAt?: string | null;
   featured: boolean;
 }
 
 export interface EventData {
   id: number;
+  cityId?: number;
   title: string;
   slug: string;
   description: string;
-  eventType: "MEETUP" | "HACKATHON" | "CONFERENCE" | "WORKSHOP" | "DEMO_DAY" | "NETWORKING";
+  eventType: "MEETUP" | "HACKATHON" | "CONFERENCE" | "WORKSHOP" | "DEMO_DAY" | "NETWORKING" | "STARTUP_PITCH" | "COLLEGE_EVENT" | "OTHER";
   organizer: string;
   date: string;
   startTime: string;
@@ -78,6 +82,8 @@ export interface EventData {
   location: string;
   registrationUrl?: string | null;
   price: string;
+  imageUrl?: string | null;
+  status?: string;
   featured: boolean;
 }
 
@@ -2379,27 +2385,121 @@ export const TALENT_DATA: TalentData[] = [
   },
 ];
 
+import {
+  INDORE_SEED_COMPANIES,
+  INDORE_SEED_FOUNDERS,
+  INDORE_SEED_EVENTS,
+  INDORE_SEED_JOBS,
+} from "@/db/indore-seed-data";
+
+export const INDORE_COMPANIES_DATA: CompanyData[] = INDORE_SEED_COMPANIES.map((c, idx) => ({
+  id: 1000 + idx + 1,
+  name: c.name,
+  slug: c.slug,
+  websiteUrl: c.websiteUrl,
+  linkedinUrl: c.linkedinUrl ?? null,
+  descriptionShort: c.descriptionShort,
+  descriptionLong: c.descriptionLong,
+  sector: c.sector,
+  companyType: c.companyType as any,
+  stage: c.stage as any,
+  foundedYear: c.foundedYear,
+  teamSize: c.teamSize,
+  locationName: c.locationName,
+  address: c.address,
+  latitude: c.latitude,
+  longitude: c.longitude,
+  hiring: c.hiring,
+  featured: c.featured ?? false,
+  careersUrl: c.careersUrl ?? null,
+  verificationStatus: c.verificationStatus as any,
+  lastVerifiedAt: c.lastVerifiedAt,
+  verificationSource: c.verificationSource,
+  logoUrl: c.logoUrl ?? null,
+  tags: c.tags,
+}));
+
+export const INDORE_FOUNDERS_DATA: FounderData[] = INDORE_SEED_FOUNDERS.map((f, idx) => {
+  const company = INDORE_COMPANIES_DATA.find((c) => c.slug === f.companySlug);
+  return {
+    id: 1000 + idx + 1,
+    name: f.name,
+    slug: f.slug,
+    role: f.role,
+    companySlug: f.companySlug,
+    companyName: company?.name || f.companySlug,
+    bio: f.bio,
+    linkedinUrl: f.linkedinUrl ?? null,
+    location: f.location,
+  };
+});
+
+export const INDORE_JOBS_DATA: JobData[] = INDORE_SEED_JOBS.map((j, idx) => {
+  const company = INDORE_COMPANIES_DATA.find((c) => c.slug === j.companySlug);
+  return {
+    id: 1000 + idx + 1,
+    title: j.title,
+    slug: j.slug,
+    companySlug: j.companySlug,
+    companyName: company?.name || j.companySlug,
+    companyLogo: company?.logoUrl ?? null,
+    description: j.description,
+    location: j.location,
+    remoteType: j.remoteType,
+    employmentType: j.employmentType,
+    experienceMin: j.experienceMin,
+    experienceMax: j.experienceMax,
+    salaryMin: j.salaryMin,
+    salaryMax: j.salaryMax,
+    currency: j.currency,
+    skills: j.skills,
+    applicationUrl: j.applicationUrl,
+    department: j.department,
+    postedAt: j.postedAt,
+    featured: j.featured ?? false,
+  };
+});
+
+export const INDORE_EVENTS_DATA: EventData[] = INDORE_SEED_EVENTS.map((e, idx) => ({
+  id: 1000 + idx + 1,
+  title: e.title,
+  slug: e.slug,
+  description: e.description,
+  eventType: e.eventType,
+  organizer: e.organizer,
+  date: e.date,
+  startTime: e.startTime,
+  endTime: e.endTime,
+  venue: e.venue,
+  location: e.location,
+  registrationUrl: e.registrationUrl,
+  price: e.price,
+  imageUrl: e.imageUrl ?? null,
+  status: e.status,
+  featured: e.featured ?? false,
+}));
+
 // ─── Query Helper Functions ─────────────────────────────────────────────────
 
 export function getAllCompanies(): CompanyData[] {
-  return COMPANIES_DATA;
+  return [...COMPANIES_DATA, ...INDORE_COMPANIES_DATA];
 }
 
 export function getCompanyBySlug(slug: string): CompanyData | undefined {
-  return COMPANIES_DATA.find((c) => c.slug === slug);
+  return [...COMPANIES_DATA, ...INDORE_COMPANIES_DATA].find((c) => c.slug === slug);
 }
 
 export function getFeaturedCompanies(limit = 6): CompanyData[] {
-  return COMPANIES_DATA.filter((c) => c.featured).slice(0, limit);
+  return [...COMPANIES_DATA, ...INDORE_COMPANIES_DATA].filter((c) => c.featured).slice(0, limit);
 }
 
 export function getHiringCompanies(): CompanyData[] {
-  return COMPANIES_DATA.filter((c) => c.hiring);
+  return [...COMPANIES_DATA, ...INDORE_COMPANIES_DATA].filter((c) => c.hiring);
 }
 
 export function getCompaniesBySector(sector: string): CompanyData[] {
   const norm = sector.toLowerCase().replace(/-/g, " ");
-  return COMPANIES_DATA.filter(
+  return [...COMPANIES_DATA, ...INDORE_COMPANIES_DATA].filter(
     (c) => c.sector.toLowerCase() === norm ||
            c.sector.toLowerCase().replace(/-/g, " ") === norm ||
            c.tags.some((t) => t.toLowerCase() === norm || t.toLowerCase().replace(/-/g, " ") === norm)
@@ -2408,42 +2508,42 @@ export function getCompaniesBySector(sector: string): CompanyData[] {
 
 export function getCompaniesByArea(areaSlug: string): CompanyData[] {
   const norm = areaSlug.toLowerCase().replace(/-/g, " ");
-  return COMPANIES_DATA.filter(
+  return [...COMPANIES_DATA, ...INDORE_COMPANIES_DATA].filter(
     (c) => c.locationName.toLowerCase().replace(/\s+/g, "-") === areaSlug.toLowerCase() ||
            c.locationName.toLowerCase().includes(norm)
   );
 }
 
 export function getAllJobs(): JobData[] {
-  return JOBS_DATA;
+  return [...JOBS_DATA, ...INDORE_JOBS_DATA];
 }
 
 export function getJobBySlug(slug: string): JobData | undefined {
-  return JOBS_DATA.find((j) => j.slug === slug);
+  return [...JOBS_DATA, ...INDORE_JOBS_DATA].find((j) => j.slug === slug);
 }
 
 export function getJobsByCompany(companySlug: string): JobData[] {
-  return JOBS_DATA.filter((j) => j.companySlug === companySlug);
+  return [...JOBS_DATA, ...INDORE_JOBS_DATA].filter((j) => j.companySlug === companySlug);
 }
 
 export function getAllEvents(): EventData[] {
-  return EVENTS_DATA;
+  return [...EVENTS_DATA, ...INDORE_EVENTS_DATA];
 }
 
 export function getEventBySlug(slug: string): EventData | undefined {
-  return EVENTS_DATA.find((e) => e.slug === slug);
+  return [...EVENTS_DATA, ...INDORE_EVENTS_DATA].find((e) => e.slug === slug);
 }
 
 export function getAllFounders(): FounderData[] {
-  return FOUNDERS_DATA;
+  return [...FOUNDERS_DATA, ...INDORE_FOUNDERS_DATA];
 }
 
 export function getFounderBySlug(slug: string): FounderData | undefined {
-  return FOUNDERS_DATA.find((f) => f.slug === slug);
+  return [...FOUNDERS_DATA, ...INDORE_FOUNDERS_DATA].find((f) => f.slug === slug);
 }
 
 export function getFoundersByCompany(companySlug: string): FounderData[] {
-  return FOUNDERS_DATA.filter((f) => f.companySlug === companySlug);
+  return [...FOUNDERS_DATA, ...INDORE_FOUNDERS_DATA].filter((f) => f.companySlug === companySlug);
 }
 
 export function getAllTalent(): TalentData[] {
@@ -2456,11 +2556,40 @@ export function getTalentBySlug(slug: string): TalentData | undefined {
 
 export function getStats() {
   return {
-    totalCompanies: COMPANIES_DATA.length,
-    totalJobs: JOBS_DATA.length,
-    totalEvents: EVENTS_DATA.length,
-    totalFounders: FOUNDERS_DATA.length,
+    totalCompanies: COMPANIES_DATA.length + INDORE_COMPANIES_DATA.length,
+    totalJobs: JOBS_DATA.length + INDORE_JOBS_DATA.length,
+    totalEvents: EVENTS_DATA.length + INDORE_EVENTS_DATA.length,
+    totalFounders: FOUNDERS_DATA.length + INDORE_FOUNDERS_DATA.length,
     totalTalent: TALENT_DATA.length,
-    hiringCompanies: COMPANIES_DATA.filter((c) => c.hiring).length,
+    hiringCompanies: [...COMPANIES_DATA, ...INDORE_COMPANIES_DATA].filter((c) => c.hiring).length,
   };
 }
+
+export function getCompaniesForCity(citySlug: string): CompanyData[] {
+  if (citySlug.toLowerCase() === "indore") {
+    return INDORE_COMPANIES_DATA;
+  }
+  return COMPANIES_DATA;
+}
+
+export function getJobsForCity(citySlug: string): JobData[] {
+  if (citySlug.toLowerCase() === "indore") {
+    return INDORE_JOBS_DATA;
+  }
+  return JOBS_DATA;
+}
+
+export function getEventsForCity(citySlug: string): EventData[] {
+  if (citySlug.toLowerCase() === "indore") {
+    return INDORE_EVENTS_DATA;
+  }
+  return EVENTS_DATA;
+}
+
+export function getFoundersForCity(citySlug: string): FounderData[] {
+  if (citySlug.toLowerCase() === "indore") {
+    return INDORE_FOUNDERS_DATA;
+  }
+  return FOUNDERS_DATA;
+}
+

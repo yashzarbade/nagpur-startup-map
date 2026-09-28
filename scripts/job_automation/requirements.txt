@@ -1,0 +1,7 @@
+# Pinned dependencies for Central India Tech Job Automation & Telegram Monitor
+python-jobspy>=1.1.75
+telethon>=1.38.0
+psycopg2-binary>=2.9.9
+python-dotenv>=1.0.1
+pydantic>=2.10.0
+requests>=2.32.0

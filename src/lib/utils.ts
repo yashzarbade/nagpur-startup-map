@@ -152,10 +152,11 @@ export function isJobExpired(expiresAt: Date | string | null, postedAt: Date | s
 
 // ─── URL generators ─────────────────────────────────────────────────
 
-export const companyUrl = (slug: string) => `/company/${slug}`;
-export const jobUrl = (slug: string) => `/job/${slug}`;
-export const eventUrl = (slug: string) => `/event/${slug}`;
-export const founderUrl = (slug: string) => `/founder/${slug}`;
+export const companyUrl = (slug: string, citySlug: string = "nagpur") => `/${citySlug}/company/${slug}`;
+export const jobUrl = (slug: string, citySlug: string = "nagpur") => `/${citySlug}/job/${slug}`;
+export const eventUrl = (slug: string, citySlug: string = "nagpur") => `/${citySlug}/event/${slug}`;
+export const founderUrl = (slug: string, citySlug: string = "nagpur") => `/${citySlug}/founder/${slug}`;
 export const talentUrl = (slug: string) => `/talent/${slug}`;
-export const sectorUrl = (slug: string) => `/startups/${slug}`;
-export const areaUrl = (slug: string) => `/areas/${slug}`;
+export const sectorUrl = (slug: string, citySlug: string = "nagpur") => `/${citySlug}/startups/${slug}`;
+export const areaUrl = (slug: string, citySlug: string = "nagpur") => `/${citySlug}/areas/${slug}`;
+

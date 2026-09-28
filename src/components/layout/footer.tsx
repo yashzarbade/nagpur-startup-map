@@ -3,28 +3,38 @@ import { MapPin } from "lucide-react";
 import { SITE, SECTORS } from "@/lib/constants";
 
 const footerLinks = {
-  discover: [
-    { label: "Startups", href: "/startups" },
-    { label: "Jobs", href: "/jobs" },
-    { label: "Events", href: "/events" },
-    { label: "Founders", href: "/founders" },
-    { label: "Hiring Companies", href: "/hiring" },
-    { label: "Talent", href: "/talent" },
+  cities: [
+    { label: "Nagpur Hub", href: "/nagpur" },
+    { label: "Indore Hub", href: "/indore" },
+    { label: "Bhopal Hub", href: "/bhopal" },
+    { label: "Nagpur Jobs", href: "/nagpur/jobs" },
+    { label: "Indore Jobs", href: "/indore/jobs" },
+    { label: "Bhopal Jobs", href: "/bhopal/jobs" },
   ],
-  sectors: SECTORS.slice(0, 8).map((s) => ({
+  discover: [
+    { label: "Startups Directory", href: "/startups" },
+    { label: "Jobs Board", href: "/jobs" },
+    { label: "Walk-in Drives", href: "/walkins" },
+    { label: "Tech Events", href: "/events" },
+    { label: "Founders Network", href: "/founders" },
+    { label: "Hiring Companies", href: "/hiring" },
+    { label: "Local Talent Pool", href: "/talent" },
+  ],
+  sectors: SECTORS.slice(0, 6).map((s) => ({
     label: `${s.label} Startups`,
     href: `/startups/${s.slug}`,
   })),
   contribute: [
-    { label: "Add Startup", href: "/submit" },
+    { label: "Add Startup", href: "/submit/startup" },
     { label: "Post a Job", href: "/submit/job" },
+    { label: "Post a Walk-In Drive", href: "/submit/walkin" },
     { label: "Add Event", href: "/submit/event" },
-    { label: "Claim Company", href: "/submit" },
-    { label: "Advertise", href: "/advertise" },
+    { label: "Register as Talent", href: "/submit/talent" },
+    { label: "Advertise with Us", href: "/advertise" },
   ],
   company: [
-    { label: "About", href: "/about" },
-    { label: "Contact", href: "/contact" },
+    { label: "About Platform", href: "/about" },
+    { label: "Contact Team", href: "/contact" },
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
   ],
@@ -45,16 +55,16 @@ export function Footer() {
               {SITE.name}
             </Link>
             <p className="mt-3 text-sm text-muted-foreground max-w-xs">
-              {SITE.description}
+              Mapping Central India&apos;s leading tech, AI, SaaS, and employment ecosystems across Nagpur, Indore, and Bhopal.
             </p>
           </div>
 
-          {/* Discover */}
+          {/* Hubs & Cities */}
           <div>
-            <h3 className="text-sm font-semibold mb-3">Discover</h3>
+            <h3 className="text-sm font-semibold mb-3">Startup Hubs</h3>
             <ul className="space-y-2">
-              {footerLinks.discover.map((link) => (
-                <li key={link.href}>
+              {footerLinks.cities.map((link) => (
+                <li key={link.label}>
                   <Link
                     href={link.href}
                     className="text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -66,11 +76,11 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Sectors */}
+          {/* Discover */}
           <div>
-            <h3 className="text-sm font-semibold mb-3">Sectors</h3>
+            <h3 className="text-sm font-semibold mb-3">Discover</h3>
             <ul className="space-y-2">
-              {footerLinks.sectors.map((link) => (
+              {footerLinks.discover.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
@@ -102,7 +112,7 @@ export function Footer() {
 
           {/* Company */}
           <div className="hidden lg:block">
-            <h3 className="text-sm font-semibold mb-3">Company</h3>
+            <h3 className="text-sm font-semibold mb-3">Platform</h3>
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
@@ -121,7 +131,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} {SITE.name}. Made with ❤️ in Nagpur.
+            © {new Date().getFullYear()} {SITE.name}. Empowering Central India tech founders and builders.
           </p>
           <div className="flex gap-4">
             {footerLinks.company.map((link) => (
