@@ -13,22 +13,7 @@ type Props = {
   params: Promise<{ city: string; slug: string }>;
 };
 
-export async function generateStaticParams() {
-  const allPublished = await getAllCities();
-  const paramsList: Array<{ city: string; slug: string }> = [];
-
-  for (const city of allPublished) {
-    const companies = getCompaniesForCity(city.slug);
-    for (const c of companies) {
-      paramsList.push({
-        city: city.slug,
-        slug: c.slug,
-      });
-    }
-  }
-
-  return paramsList;
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city: citySlug, slug } = await params;
