@@ -48,7 +48,12 @@ export default async function LegacyCompanyRedirectPage({ params }: Props) {
   // 3. Fallback to Database lookup if not found in static definitions
   const dbCompany = await getCompanyBySlug(slug);
   if (dbCompany) {
-    const citySlug = dbCompany.cityId === 3 ? "indore" : "nagpur";
+    const citySlug =
+      dbCompany.cityId === 3
+        ? "indore"
+        : dbCompany.cityId === 6
+        ? "bhopal"
+        : "nagpur";
     redirect(`/${citySlug}/company/${slug}`);
   }
 

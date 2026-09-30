@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { Layers } from "lucide-react";
-import type { CompanyData } from "@/lib/data";
 
 export interface StartupMapProps {
   cityName?: string;
@@ -10,7 +9,7 @@ export interface StartupMapProps {
   center?: [number, number];
   zoom?: number;
   areas?: Array<{ name: string; lng: number; lat: number; zoom: number }>;
-  companiesList?: CompanyData[];
+  companiesList?: any[];
 }
 
 // Dynamically import the Mapbox map component without SSR

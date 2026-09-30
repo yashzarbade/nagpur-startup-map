@@ -7,6 +7,7 @@ import { CityComingSoon } from "@/components/city/city-coming-soon";
 
 type Props = {
   params: Promise<{ city: string; sector: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -15,8 +16,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const sector = SECTORS.find((s) => s.slug === sectorSlug);
   if (!city || !sector) return { title: "Sector Not Found" };
 
-  const title = `${sector.label} Startups in ${city.name} | ${city.name} Startup Map`;
-  const description = `Explore top ${sector.label} startups, tech companies, and products in ${city.name}, ${city.state}.`;
+  const title = `${sector.label} Companies & Startups in ${city.name} | ${city.name} Startup Map`;
+  const description = `Explore top ${sector.label} companies, startups, and tech products in ${city.name}, ${city.state}. Browse verified companies and open job roles.`;
 
   return {
     title,
@@ -32,8 +33,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function CitySectorStartupsPage({ params }: Props) {
+export default async function CitySectorStartupsPage({ params, searchParams }: Props) {
   const { city: citySlug, sector: sectorSlug } = await params;
+  const resolvedSearchParams = await searchParams;
   const city = await getCityBySlug(citySlug);
 
   if (!city) {
@@ -44,5 +46,7 @@ export default async function CitySectorStartupsPage({ params }: Props) {
     return <CityComingSoon city={city} />;
   }
 
-  return <CityStartupsView city={city} sectorSlug={sectorSlug} />;
+  const page = Number(resolvedSearchParams.page) || 1;
+
+  return <CityStartupsView city={city} sectorSlug={sectorSlug} page={page} />;
 }

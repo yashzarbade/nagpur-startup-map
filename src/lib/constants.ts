@@ -195,7 +195,7 @@ export const SITE = {
 
 // ─── Pagination ─────────────────────────────────────────────────────────────
 
-export const ITEMS_PER_PAGE = 24;
+export const ITEMS_PER_PAGE = 20;
 export const JOBS_PER_PAGE = 20;
 export const EVENTS_PER_PAGE = 12;
 

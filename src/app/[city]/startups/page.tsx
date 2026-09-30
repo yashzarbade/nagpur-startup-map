@@ -6,6 +6,7 @@ import { CityComingSoon } from "@/components/city/city-coming-soon";
 
 type Props = {
   params: Promise<{ city: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export async function generateStaticParams() {
@@ -22,8 +23,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return getCityMetadata(city, "startups");
 }
 
-export default async function CityStartupsPage({ params }: Props) {
+export default async function CityStartupsPage({ params, searchParams }: Props) {
   const { city: citySlug } = await params;
+  const resolvedSearchParams = await searchParams;
   const city = await getCityBySlug(citySlug);
 
   if (!city) {
@@ -34,5 +36,18 @@ export default async function CityStartupsPage({ params }: Props) {
     return <CityComingSoon city={city} />;
   }
 
-  return <CityStartupsView city={city} />;
+  const page = Number(resolvedSearchParams.page) || 1;
+  const search = typeof resolvedSearchParams.search === "string" ? resolvedSearchParams.search : undefined;
+  const sort = typeof resolvedSearchParams.sort === "string" ? resolvedSearchParams.sort : undefined;
+  const companyType = typeof resolvedSearchParams.type === "string" ? resolvedSearchParams.type : undefined;
+
+  return (
+    <CityStartupsView
+      city={city}
+      page={page}
+      search={search}
+      sort={sort}
+      companyType={companyType}
+    />
+  );
 }

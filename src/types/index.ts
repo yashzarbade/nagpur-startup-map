@@ -12,6 +12,8 @@ import type {
   savedCompanies,
   notifications,
   jobSourceHealth,
+  jobApplications,
+  jobAlerts,
 } from "@/db/schema";
 
 // ─── Database entity types (inferred from Drizzle schema) ───────────────────
@@ -49,6 +51,12 @@ export type SavedCompany = typeof savedCompanies.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type JobSourceHealth = typeof jobSourceHealth.$inferSelect;
 export type NewJobSourceHealth = typeof jobSourceHealth.$inferInsert;
+
+export type JobApplication = typeof jobApplications.$inferSelect;
+export type NewJobApplication = typeof jobApplications.$inferInsert;
+
+export type JobAlert = typeof jobAlerts.$inferSelect;
+export type NewJobAlert = typeof jobAlerts.$inferInsert;
 
 // ─── View types (enriched types for UI consumption) ─────────────────────────
 

@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { JobApplyBox } from "@/components/jobs/job-apply-box";
 import { SITE } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { getCityBySlug, getAllCities } from "@/lib/cities";
@@ -213,27 +214,25 @@ export default async function CityJobPage({ params }: Props) {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="mt-6 pt-6 border-t flex flex-wrap items-center gap-3">
-                {!isExpired && job.applicationUrl ? (
-                  <a
-                    href={job.applicationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-                  >
-                    <span>Apply on Company Website</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                ) : null}
+              {/* Action Buttons & Application Tracking */}
+              <div className="mt-6 pt-6 border-t space-y-3">
+                <JobApplyBox
+                  jobId={job.id}
+                  jobTitle={job.title}
+                  companyName={job.companyName}
+                  applicationUrl={job.applicationUrl}
+                  isExpired={isExpired}
+                />
 
-                <Link
-                  href={`/${city.slug}/company/${job.companySlug}`}
-                  className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-semibold hover:bg-accent transition-colors"
-                >
-                  <Building2 className="h-4 w-4 text-primary" />
-                  <span>View Company Profile</span>
-                </Link>
+                <div>
+                  <Link
+                    href={`/${city.slug}/company/${job.companySlug}`}
+                    className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    <span>View all openings and profile for {job.companyName} →</span>
+                  </Link>
+                </div>
               </div>
             </div>
 

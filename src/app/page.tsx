@@ -17,19 +17,19 @@ import {
 import { CompanyCard } from "@/components/company-card";
 import { JobCard } from "@/components/job-card";
 import { StartupMap } from "@/components/startup-map";
-import { getCompanies, getHiringCompanies } from "@/lib/queries/companies";
+import { getCompanies, getHiringCompanies, getCityMapCompanies } from "@/lib/queries/companies";
 import { getLatestJobs, countActiveJobs } from "@/lib/queries/jobs";
 import { getEcosystemStats } from "@/lib/queries/stats";
 import { getAllCities } from "@/lib/cities";
-import { COMPANIES_DATA } from "@/lib/data";
 
 export default async function HomePage() {
-  const [allCities, nagpurStats, indoreStats, hiringResult, latestJobs] = await Promise.all([
+  const [allCities, nagpurStats, indoreStats, hiringResult, latestJobs, nagpurMapCompanies] = await Promise.all([
     getAllCities(),
     getEcosystemStats(1), // Nagpur city_id = 1
     getEcosystemStats(3), // Indore city_id = 3
     getHiringCompanies(1, 1),
     getLatestJobs(6, 1),
+    getCityMapCompanies(1, "nagpur"),
   ]);
 
   const hiringCompanies = hiringResult.companies.slice(0, 6);
@@ -117,7 +117,7 @@ export default async function HomePage() {
                   <div className="text-lg font-bold text-foreground">
                     {nagpurStats.totalCompanies}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Startups</div>
+                  <div className="text-[11px] text-muted-foreground">Companies</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-blue-500">
@@ -173,7 +173,7 @@ export default async function HomePage() {
                   <div className="text-lg font-bold text-foreground">
                     {indoreStats.totalCompanies}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Startups</div>
+                  <div className="text-[11px] text-muted-foreground">Companies</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-blue-500">
@@ -210,7 +210,7 @@ export default async function HomePage() {
               Nagpur Tech &amp; Startup Ecosystem
             </h2>
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-              Explore 56+ verified technology companies across MIHAN SEZ, IT Park, Dharampeth, and Civil Lines.
+              Explore {nagpurStats.totalCompanies}+ verified technology companies across MIHAN SEZ, IT Park, Dharampeth, and Civil Lines.
             </p>
           </div>
           <Link
@@ -227,7 +227,7 @@ export default async function HomePage() {
           citySlug="nagpur"
           center={[79.0882, 21.1458]}
           zoom={11}
-          companiesList={COMPANIES_DATA}
+          companiesList={nagpurMapCompanies}
         />
       </section>
 
@@ -238,7 +238,7 @@ export default async function HomePage() {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Startups Hiring Right Now
+                  Companies Hiring Right Now
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Verified companies actively expanding their engineering and product teams

@@ -671,3 +671,87 @@ export const jobSourceHealth = pgTable(
     index("job_source_health_city_idx").on(table.citySlug),
   ]
 );
+
+// ─── Application Status Enum ────────────────────────────────────────────────
+
+export const applicationStatusEnum = pgEnum("application_status", [
+  "APPLIED",
+  "UNDER_REVIEW",
+  "SHORTLISTED",
+  "INTERVIEW",
+  "REJECTED",
+  "HIRED",
+  "WITHDRAWN",
+]);
+
+// ─── Job Applications ───────────────────────────────────────────────────────
+
+export const jobApplications = pgTable(
+  "job_applications",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    jobId: integer("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    companyId: integer("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    status: applicationStatusEnum("status").notNull().default("APPLIED"),
+    coverMessage: text("cover_message"),
+    resumeUrl: text("resume_url"),
+    portfolioUrl: text("portfolio_url"),
+    linkedinUrl: text("linkedin_url"),
+    githubUrl: text("github_url"),
+    applicantName: varchar("applicant_name", { length: 255 }),
+    applicantEmail: varchar("applicant_email", { length: 255 }),
+    adminNotes: text("admin_notes"),
+    statusChangedAt: timestamp("status_changed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("job_applications_user_idx").on(table.userId),
+    index("job_applications_job_idx").on(table.jobId),
+    index("job_applications_company_idx").on(table.companyId),
+    index("job_applications_status_idx").on(table.status),
+    uniqueIndex("job_applications_user_job_idx").on(table.userId, table.jobId),
+    index("job_applications_created_idx").on(table.createdAt),
+  ]
+);
+
+// ─── Alert Frequency Enum ───────────────────────────────────────────────────
+
+export const alertFrequencyEnum = pgEnum("alert_frequency", [
+  "INSTANT",
+  "DAILY",
+  "WEEKLY",
+]);
+
+// ─── Job Alerts ─────────────────────────────────────────────────────────────
+
+export const jobAlerts = pgTable(
+  "job_alerts",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    cityId: integer("city_id").references(() => cities.id),
+    keyword: varchar("keyword", { length: 255 }),
+    sector: varchar("sector", { length: 100 }),
+    skills: text("skills"), // comma-separated
+    experienceLevel: varchar("experience_level", { length: 50 }),
+    employmentType: varchar("employment_type", { length: 50 }),
+    remoteType: varchar("remote_type", { length: 50 }),
+    frequency: alertFrequencyEnum("frequency").notNull().default("DAILY"),
+    active: boolean("active").notNull().default(true),
+    lastNotifiedAt: timestamp("last_notified_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("job_alerts_user_idx").on(table.userId),
+    index("job_alerts_active_idx").on(table.active),
+    index("job_alerts_city_idx").on(table.cityId),
+  ]
+);

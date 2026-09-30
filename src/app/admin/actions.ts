@@ -12,6 +12,8 @@ import {
   founders,
   notifications,
   adminActions,
+  jobApplications,
+  jobAlerts,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { eq, and, desc } from "drizzle-orm";
@@ -1157,6 +1159,161 @@ export async function updateEventAction(eventId: number, data: Partial<EventAdmi
   } catch (err: any) {
     console.error("[admin] Error updating event:", err);
     return { error: err.message || "Failed to update event." };
+  }
+}
+
+/**
+ * Fetch ecosystem data quality diagnostics for admin console
+ */
+export async function getDataQualityReportAction() {
+  await requireAdmin();
+
+  try {
+    const [allCompanies, allJobs, allApplications] = await Promise.all([
+      db.select({
+        id: companies.id,
+        name: companies.name,
+        slug: companies.slug,
+        websiteUrl: companies.websiteUrl,
+        latitude: companies.latitude,
+        longitude: companies.longitude,
+        sector: companies.sector,
+        companyType: companies.companyType,
+        verificationStatus: companies.verificationStatus,
+        cityId: companies.cityId,
+      }).from(companies),
+      db.select({
+        id: jobs.id,
+        title: jobs.title,
+        companyId: jobs.companyId,
+        status: jobs.status,
+        postedAt: jobs.postedAt,
+        applicationUrl: jobs.applicationUrl,
+      }).from(jobs),
+      db.select({
+        id: jobApplications.id,
+        status: jobApplications.status,
+      }).from(jobApplications),
+    ]);
+
+    const missingWebsite = allCompanies.filter((c) => !c.websiteUrl || !c.websiteUrl.trim());
+    const missingCoords = allCompanies.filter((c) => !c.latitude || !c.longitude);
+    const unverifiedCompanies = allCompanies.filter((c) => c.verificationStatus !== "VERIFIED");
+    const missingSector = allCompanies.filter((c) => !c.sector || c.sector === "Other");
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const staleJobs = allJobs.filter(
+      (j) => j.status === "ACTIVE" && j.postedAt && new Date(j.postedAt) < thirtyDaysAgo
+    );
+
+    const applicationsByStatus: Record<string, number> = {
+      APPLIED: 0,
+      UNDER_REVIEW: 0,
+      SHORTLISTED: 0,
+      INTERVIEW: 0,
+      HIRED: 0,
+      REJECTED: 0,
+      WITHDRAWN: 0,
+    };
+    for (const app of allApplications) {
+      if (applicationsByStatus[app.status] !== undefined) {
+        applicationsByStatus[app.status]++;
+      }
+    }
+
+    return {
+      success: true,
+      summary: {
+        totalCompanies: allCompanies.length,
+        missingWebsiteCount: missingWebsite.length,
+        missingCoordsCount: missingCoords.length,
+        unverifiedCount: unverifiedCompanies.length,
+        missingSectorCount: missingSector.length,
+        totalJobs: allJobs.length,
+        activeJobsCount: allJobs.filter((j) => j.status === "ACTIVE").length,
+        staleJobsCount: staleJobs.length,
+        totalApplications: allApplications.length,
+        applicationsByStatus,
+      },
+      flaggedCompanies: {
+        missingCoords: missingCoords.slice(0, 50).map((c) => ({ id: c.id, name: c.name, slug: c.slug, cityId: c.cityId })),
+        missingWebsite: missingWebsite.slice(0, 50).map((c) => ({ id: c.id, name: c.name, slug: c.slug, cityId: c.cityId })),
+      },
+    };
+  } catch (err: any) {
+    console.error("[admin] Error getting data quality report:", err);
+    return { error: err.message || "Failed to generate data quality report." };
+  }
+}
+
+/**
+ * Update candidate application status (APPLIED -> UNDER_REVIEW -> SHORTLISTED -> INTERVIEW -> HIRED / REJECTED)
+ */
+export async function updateApplicationStatusAction(
+  applicationId: number,
+  status: "APPLIED" | "UNDER_REVIEW" | "SHORTLISTED" | "INTERVIEW" | "REJECTED" | "HIRED" | "WITHDRAWN",
+  adminNotes?: string
+) {
+  const { user: adminUser } = await requireAdmin();
+
+  try {
+    const [existing] = await db
+      .select({
+        id: jobApplications.id,
+        userId: jobApplications.userId,
+        jobId: jobApplications.jobId,
+        status: jobApplications.status,
+      })
+      .from(jobApplications)
+      .where(eq(jobApplications.id, applicationId))
+      .limit(1);
+
+    if (!existing) {
+      return { error: "Application not found" };
+    }
+
+    const [updated] = await db
+      .update(jobApplications)
+      .set({
+        status,
+        statusChangedAt: new Date(),
+        updatedAt: new Date(),
+        ...(adminNotes ? { adminNotes } : {}),
+      })
+      .where(eq(jobApplications.id, applicationId))
+      .returning();
+
+    // Get job info for the notification
+    const [job] = await db
+      .select({ title: jobs.title })
+      .from(jobs)
+      .where(eq(jobs.id, existing.jobId))
+      .limit(1);
+
+    // Send in-app notification to applicant
+    await db.insert(notifications).values({
+      userId: existing.userId,
+      title: `Application Status Updated: ${status.replace("_", " ")}`,
+      message: `Your application status for "${job?.title || "role"}" has progressed to ${status.replace("_", " ")}.`,
+      type: "APPLICATION",
+      link: "/profile/applications",
+    });
+
+    await db.insert(adminActions).values({
+      adminId: adminUser.id,
+      action: "UPDATE_APPLICATION_STATUS",
+      entityType: "JOB",
+      entityId: applicationId,
+      notes: `Updated application #${applicationId} to ${status}`,
+    });
+
+    revalidatePath("/admin");
+    revalidatePath("/profile/applications");
+
+    return { success: true, application: updated };
+  } catch (err: any) {
+    console.error("[admin] Error updating application status:", err);
+    return { error: err.message || "Failed to update application status." };
   }
 }
 

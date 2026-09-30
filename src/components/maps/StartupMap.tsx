@@ -16,14 +16,9 @@ import {
   Layers,
   Sparkles,
   ArrowRight,
+  Navigation,
+  List,
 } from "lucide-react";
-import {
-  COMPANIES_DATA,
-  JOBS_DATA,
-  INDORE_COMPANIES_DATA,
-  INDORE_JOBS_DATA,
-  CompanyData,
-} from "@/lib/data";
 
 // Color mapping for sector markers
 const SECTOR_COLORS: Record<string, string> = {
@@ -95,13 +90,16 @@ const SECTOR_OPTIONS = [
   "Software",
 ];
 
+// Timeout for map loading (10 seconds)
+const MAP_LOAD_TIMEOUT_MS = 10000;
+
 export interface StartupMapProps {
   cityName?: string;
   citySlug?: string;
   center?: [number, number];
   zoom?: number;
   areas?: Array<{ name: string; lng: number; lat: number; zoom: number }>;
-  companiesList?: CompanyData[];
+  companiesList?: any[];
 }
 
 export default function StartupMap({
@@ -116,7 +114,10 @@ export default function StartupMap({
   const mapContainerRef = React.useRef<HTMLDivElement>(null);
   const mapInstanceRef = React.useRef<mapboxgl.Map | null>(null);
   const popupRef = React.useRef<mapboxgl.Popup | null>(null);
+  const userMarkerRef = React.useRef<mapboxgl.Marker | null>(null);
   const [isMobileMapCollapsed, setIsMobileMapCollapsed] = React.useState(false);
+  const [showUserLocation, setShowUserLocation] = React.useState(false);
+  const [locationError, setLocationError] = React.useState<string | null>(null);
 
   const defaultCenter: [number, number] = React.useMemo(() => {
     if (center) return center;
@@ -127,11 +128,8 @@ export default function StartupMap({
 
   const effectiveCompanies = React.useMemo(() => {
     if (companiesList && companiesList.length > 0) return companiesList;
-    if (citySlug === "indore") {
-      return INDORE_COMPANIES_DATA;
-    }
-    return COMPANIES_DATA;
-  }, [citySlug, companiesList]);
+    return [];
+  }, [companiesList]);
 
   const effectiveAreas = React.useMemo(() => {
     if (areas && areas.length > 0 && areas !== NAGPUR_AREAS) return areas;
@@ -146,9 +144,10 @@ export default function StartupMap({
 
   const [selectedSector, setSelectedSector] = React.useState<string>("All");
   const [selectedArea, setSelectedArea] = React.useState<string>(`All ${cityName}`);
-  const [activeCompany, setActiveCompany] = React.useState<CompanyData | null>(null);
+  const [activeCompany, setActiveCompany] = React.useState<any | null>(null);
   const [mapLoaded, setMapLoaded] = React.useState(false);
   const [mapError, setMapError] = React.useState<string | null>(null);
+  const [mapTimedOut, setMapTimedOut] = React.useState(false);
 
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -161,43 +160,65 @@ export default function StartupMap({
   }, [selectedSector, effectiveCompanies]);
 
   // Convert companies to GeoJSON feature collection
-  const geojsonData = React.useMemo(() => {
-    const jobsList = citySlug === "indore" ? INDORE_JOBS_DATA : JOBS_DATA;
+  const geojsonData = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => {
+    const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
+
+    for (const c of filteredCompanies) {
+      if (!c.latitude || !c.longitude) continue;
+      const lng = parseFloat(c.longitude);
+      const lat = parseFloat(c.latitude);
+      if (isNaN(lng) || isNaN(lat)) continue;
+
+      features.push({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [lng, lat],
+        },
+        properties: {
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          sector: c.sector || "Technology",
+          companyType: c.companyType || "Startup",
+          locationName: c.locationName || "",
+          hiring: c.hiring,
+          descriptionShort: c.descriptionShort || "",
+          logoUrl: c.logoUrl || "",
+          teamSize: c.teamSize || "",
+          color: SECTOR_COLORS[c.sector] || DEFAULT_SECTOR_COLOR,
+        },
+      });
+    }
+
     return {
-      type: "FeatureCollection" as const,
-      features: filteredCompanies.map((c) => {
-        const lng = parseFloat(c.longitude);
-        const lat = parseFloat(c.latitude);
-        const jobsCount = jobsList.filter((j) => j.companySlug === c.slug).length;
-        return {
-          type: "Feature" as const,
-          geometry: {
-            type: "Point" as const,
-            coordinates: [lng, lat],
-          },
-          properties: {
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            sector: c.sector,
-            companyType: c.companyType || "Startup",
-            locationName: c.locationName,
-            hiring: c.hiring,
-            jobsCount,
-            descriptionShort: c.descriptionShort,
-            logoUrl: c.logoUrl || "",
-            teamSize: c.teamSize,
-            color: SECTOR_COLORS[c.sector] || DEFAULT_SECTOR_COLOR,
-          },
-        };
-      }),
+      type: "FeatureCollection",
+      features,
     };
-  }, [filteredCompanies, citySlug]);
+  }, [filteredCompanies]);
+
+  // WebGL check before map init
+  const isWebGLSupported = React.useMemo(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const canvas = document.createElement("canvas");
+      return !!(
+        canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
+      );
+    } catch {
+      return false;
+    }
+  }, []);
 
   // Initialize Mapbox map
   React.useEffect(() => {
     if (!token) {
-      setMapError("Mapbox access token is missing. Please add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to .env.local.");
+      setMapError("Mapbox access token is missing.");
+      return;
+    }
+
+    if (!isWebGLSupported) {
+      setMapError("WebGL is not supported in your browser or graphics hardware.");
       return;
     }
 
@@ -207,6 +228,14 @@ export default function StartupMap({
     }
 
     if (mapInstanceRef.current || !mapContainerRef.current) return;
+
+    // Set loading timeout
+    const timeoutId = setTimeout(() => {
+      if (!mapLoaded) {
+        setMapTimedOut(true);
+        setMapError("Map took too long to load. View companies in the list below.");
+      }
+    }, MAP_LOAD_TIMEOUT_MS);
 
     try {
       mapboxgl.accessToken = token;
@@ -218,7 +247,7 @@ export default function StartupMap({
         zoom: zoom,
         minZoom: 8,
         maxZoom: 18,
-        attributionControl: true, // Keep Mapbox attribution visible per terms
+        attributionControl: true,
       });
 
       // Add navigation controls (zoom, compass)
@@ -230,6 +259,7 @@ export default function StartupMap({
       }
 
       map.on("load", () => {
+        clearTimeout(timeoutId);
         mapInstanceRef.current = map;
 
         // Add clustered GeoJSON source
@@ -359,7 +389,7 @@ export default function StartupMap({
           }
 
           // Find company in data
-          const fullCompany = (effectiveCompanies || COMPANIES_DATA).find((c: any) => c.slug === props.slug);
+          const fullCompany = effectiveCompanies.find((c: any) => c.slug === props.slug);
           if (fullCompany) {
             setActiveCompany(fullCompany);
           }
@@ -385,10 +415,6 @@ export default function StartupMap({
             ? `<span style="background-color: #f1f5f9; color: #475569; padding: 2px 7px; border-radius: 9999px; font-size: 9px; font-weight: 600;">${props.companyType}</span>`
             : "";
 
-          const jobsBadge = props.jobsCount && Number(props.jobsCount) > 0
-            ? `<span style="background-color: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 9999px; font-size: 10px; font-weight: 500;">${props.jobsCount} jobs</span>`
-            : "";
-
           popupContent.innerHTML = `
             <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
               ${logoHtml}
@@ -406,8 +432,7 @@ export default function StartupMap({
             <p style="font-size: 11px; color: #334155; line-height: 1.4; margin: 0 0 10px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
               ${props.descriptionShort || ""}
             </p>
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 8px;">
-              ${jobsBadge}
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 8px;">
               <button id="view-company-btn-${props.slug}" style="background-color: #f97316; color: #ffffff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; margin-left: auto;">
                 View Company →
               </button>
@@ -447,15 +472,22 @@ export default function StartupMap({
       map.on("error", (e) => {
         // If map fails with style/token error
         if (e?.error?.message?.includes("Forbidden") || e?.error?.message?.includes("Unauthorized")) {
+          clearTimeout(timeoutId);
           setMapError("Mapbox access token is invalid or unauthorized.");
         }
       });
     } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error("Mapbox initialization error:", err);
       setMapError("Failed to initialize Mapbox GL JS.");
     }
 
     return () => {
+      clearTimeout(timeoutId);
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
       if (popupRef.current) {
         popupRef.current.remove();
         popupRef.current = null;
@@ -465,7 +497,8 @@ export default function StartupMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [token, router, geojsonData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   // Update GeoJSON source when filter changes without re-initializing map
   React.useEffect(() => {
@@ -492,48 +525,133 @@ export default function StartupMap({
     }
   };
 
+  // User location — ONLY when user clicks "Use my location"
+  const handleShowMyLocation = React.useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setLocationError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const map = mapInstanceRef.current;
+
+        if (map) {
+          // Remove old marker if exists
+          if (userMarkerRef.current) {
+            userMarkerRef.current.remove();
+          }
+
+          // Create a pulsing blue dot marker
+          const el = document.createElement("div");
+          el.className = "user-location-marker";
+          el.style.cssText = `
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #3b82f6; border: 3px solid #ffffff;
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.3), 0 2px 4px rgba(0,0,0,0.2);
+          `;
+
+          const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat([longitude, latitude])
+            .setPopup(
+              new mapboxgl.Popup({ offset: 12 }).setHTML(
+                '<div style="font-size:12px;font-weight:600;padding:4px 8px;">You are here</div>'
+              )
+            )
+            .addTo(map);
+
+          userMarkerRef.current = marker;
+          setShowUserLocation(true);
+
+          // Fly to user's location
+          map.flyTo({
+            center: [longitude, latitude],
+            zoom: 13,
+            duration: 1500,
+          });
+        }
+      },
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError("Location permission denied. You can enable it in your browser settings.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setLocationError("Location information is unavailable.");
+            break;
+          case error.TIMEOUT:
+            setLocationError("Location request timed out.");
+            break;
+          default:
+            setLocationError("An unknown error occurred.");
+        }
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  }, []);
+
+  // Remove user location
+  const handleRemoveLocation = React.useCallback(() => {
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+    setShowUserLocation(false);
+    setLocationError(null);
+  }, []);
+
   // Fallback UI if map cannot load
   if (mapError) {
     return (
-      <div className="relative w-full rounded-2xl overflow-hidden border shadow-sm bg-card p-8 flex flex-col items-center justify-center text-center min-h-[500px] sm:min-h-[600px]">
+      <div className="relative w-full rounded-2xl overflow-hidden border shadow-sm bg-card p-8 flex flex-col items-center justify-center text-center min-h-[300px]">
         <div className="w-14 h-14 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
           <AlertTriangle className="h-7 w-7" />
         </div>
-        <h3 className="text-xl font-bold text-foreground">Map couldn&apos;t load. View startups in list.</h3>
+        <h3 className="text-xl font-bold text-foreground">
+          Map unavailable — View all companies in list
+        </h3>
         <p className="text-sm text-muted-foreground max-w-md mt-1 mb-6">
-          {mapError} You can still browse and discover all {COMPANIES_DATA.length} verified companies directly in the directory.
+          {mapError} You can still browse and discover all {effectiveCompanies.length} verified companies directly in the directory.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/startups"
+            href={`/${citySlug}/startups`}
             className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-colors shadow-sm"
           >
-            Explore All Startups
+            <span className="flex items-center gap-1.5">
+              <List className="h-3.5 w-3.5" />
+              Browse All Companies
+            </span>
           </Link>
           <Link
-            href="/hiring"
+            href={`/${citySlug}/hiring`}
             className="px-5 py-2.5 rounded-xl border text-xs font-semibold hover:bg-muted transition-colors"
           >
             Companies Hiring Now
           </Link>
         </div>
 
-        {/* Quick fallback startup cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mt-8 text-left">
-          {filteredCompanies.slice(0, 3).map((c: any) => (
-            <Link
-              key={c.slug}
-              href={`/${citySlug || "nagpur"}/company/${c.slug}`}
-              className="p-3.5 rounded-xl border bg-background hover:border-primary/50 transition-colors shadow-xs group"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{c.sector}</span>
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-1">{c.locationName}</p>
-            </Link>
-          ))}
-        </div>
+        {/* Quick fallback company cards grid */}
+        {filteredCompanies.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mt-8 text-left">
+            {filteredCompanies.slice(0, 3).map((c: any) => (
+              <Link
+                key={c.slug}
+                href={`/${citySlug || "nagpur"}/company/${c.slug}`}
+                className="p-3.5 rounded-xl border bg-background hover:border-primary/50 transition-colors shadow-xs group"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{c.sector}</span>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-1">{c.locationName}</p>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -602,6 +720,38 @@ export default function StartupMap({
               ))}
             </div>
           </div>
+
+          {/* User Location Button — bottom left, only appears on loaded map */}
+          {mapLoaded && (
+            <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-2">
+              {!showUserLocation ? (
+                <button
+                  type="button"
+                  onClick={handleShowMyLocation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-background/95 backdrop-blur-md border shadow-sm text-foreground hover:bg-muted transition-colors"
+                  title="Show my location on map"
+                >
+                  <Navigation className="h-3.5 w-3.5 text-blue-500" />
+                  <span>Use my location</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleRemoveLocation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/10 border border-blue-500/30 shadow-sm text-blue-600 hover:bg-blue-500/20 transition-colors"
+                  title="Hide my location"
+                >
+                  <Navigation className="h-3.5 w-3.5" />
+                  <span>Hide location</span>
+                </button>
+              )}
+              {locationError && (
+                <div className="px-3 py-1.5 text-[10px] font-medium rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 max-w-[220px]">
+                  {locationError}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Mapbox Canvas Container */}
           <div
@@ -675,7 +825,9 @@ export default function StartupMap({
                   <Briefcase className="h-3 w-3" /> Hiring Now
                 </span>
               )}
-              <span className="text-[11px] text-muted-foreground">Team: {activeCompany.teamSize}</span>
+              {activeCompany.teamSize && (
+                <span className="text-[11px] text-muted-foreground">Team: {activeCompany.teamSize}</span>
+              )}
             </div>
             <Link
               href={`/${citySlug}/company/${activeCompany.slug}`}

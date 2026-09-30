@@ -63,7 +63,7 @@ export async function CityOverview({ city }: CityOverviewProps) {
 
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Discover {cityName}&apos;s{" "}
-              <span className="text-gradient">startups, tech companies</span>
+              <span className="text-gradient">companies, startups</span>
               , jobs and opportunities.
             </h1>
             <p className="mt-4 text-lg text-muted-foreground sm:text-xl max-w-2xl mx-auto">
@@ -183,7 +183,7 @@ export async function CityOverview({ city }: CityOverviewProps) {
                   Actively Hiring in {cityName}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Startups building their teams right now
+                  Companies building their teams right now
                 </p>
               </div>
               <Link
@@ -249,7 +249,7 @@ export async function CityOverview({ city }: CityOverviewProps) {
                 <div className="font-semibold text-sm group-hover:text-primary transition-colors">
                   {s.label}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">Startups</div>
+                <div className="text-xs text-muted-foreground mt-1">Companies</div>
               </Link>
             ))}
           </div>

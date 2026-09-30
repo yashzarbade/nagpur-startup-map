@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SITE } from "@/lib/constants";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -77,11 +78,16 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.ico", sizes: "48x48" },
     ],
     apple: [
       { url: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
+  },
+  manifest: "/manifest.webmanifest",
+  other: {
+    "theme-color": "#f97316",
+    "msapplication-TileColor": "#f97316",
   },
 };
 
@@ -90,6 +96,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans">
@@ -134,6 +142,8 @@ export default function RootLayout({
             ]).replace(/</g, "\\u003c"),
           }}
         />
+
+        {gaId && <GoogleAnalytics gaId={gaId} />}
       </body>
     </html>
   );
